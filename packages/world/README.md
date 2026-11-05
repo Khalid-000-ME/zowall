@@ -70,7 +70,7 @@ is insurance, not the plan.
 **`staging` and `sandbox` are different environments**, with different verify
 endpoints (`staging.world.org/verify` vs `sandbox.world.org/verify`). Sandbox
 needs the Sandbox World ID app installed from TestFlight or Play; staging does
-not. At Mumbai proofs are mocked, so staging is the one to use.
+not.
 
 ## Things that cost debugging time, recorded so they cost it once
 
@@ -87,5 +87,6 @@ not. At Mumbai proofs are mocked, so staging is the one to use.
   uniqueness proof. The integration is working; the question was wrong.
 - The Portal app must be in **`external`** mode, not `mini-app`. Fixed at
   create time.
-- At Mumbai, proofs are **mocked with fake identities**. Stated in the README,
-  and nothing here relies on them for production.
+- In non-production environments, proofs may be simulated and the identities
+  behind them are not real. Nothing here treats a staging nullifier as evidence
+  of real-world uniqueness.

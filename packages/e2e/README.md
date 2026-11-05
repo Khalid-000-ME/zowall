@@ -20,17 +20,16 @@ node packages/e2e/src/flow.ts --refund --cleanup  # and restore the vault
 | 4 | that same invoice again | `REJECTED` `DUPLICATE_INVOICE` |
 
 **The refusals run first, on purpose.** Run them after the purchase order has
-paid out and closed and each one picks up `PO_CLOSED` and `QTY_OVER_RECEIVED`
-as well — all true, but three codes are harder to read from the back of a room
-than one. Step 3 invoices only half the order so the PO stays open, which is
-what keeps step 4 down to a single code.
+paid out and closed and each one also picks up `PO_CLOSED` and
+`QTY_OVER_RECEIVED` — all true, but it makes the output ambiguous about which
+rule actually caught the problem. Step 3 invoices only half the order so the PO
+stays open, which is what keeps step 4 down to a single code.
 
 ## Why it restores itself
 
 `--refund` hands the vendor's USDT back to the vault and `--cleanup` releases
-the un-invoiced half of the purchase order. Without both, every rehearsal
-permanently costs part of the treasury — and the Whitechain faucet allows **one
-drip per GitHub account**, so there is no refilling it.
+the un-invoiced half of the purchase order. Without both, every run permanently
+costs part of the treasury, and testnet USDT is not freely refillable.
 
 The run sizes the order to whatever is *unencumbered* in the vault, not the raw
 balance, because `createPO` checks `balance >= totalEncumbered + total`. Sizing
@@ -39,6 +38,6 @@ off the balance makes the second rehearsal revert.
 ## The RPC is unreliable
 
 The public Whitechain Sepolia RPC returns intermittent `503 no backend is
-currently healthy` and occasional timeouts. Mid-demo that reads as our bug, so
-every call retries with backoff. Set `EVM_RPC_URL` to override the endpoint —
-that is what the free Ankr endpoint on the prize page is for.
+currently healthy` and occasional timeouts, so every call retries with backoff.
+Set `EVM_RPC_URL` to point at a different endpoint if the public one is
+unreliable.

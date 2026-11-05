@@ -7,7 +7,7 @@ for reading, and a CLI that reconciles the two against the EVM log.
 # one-off setup; prints the topic id and submit key
 node packages/journal/src/cli.ts create-topic
 
-# the thing to hand a judge. Needs no credentials.
+# reconcile the journal against the chain. Needs no credentials.
 node packages/journal/src/cli.ts replay 0.0.XXXXXX --chain 1874 --gate 0x...
 
 # the last twenty entries, newest first
@@ -44,8 +44,8 @@ that only ever prints `OK` proves nothing.
 **One decision, one message.** An HCS message caps at 1024 bytes. Chunking
 exists, but each chunk is a separate consensus message, which would break the
 one-entry-per-decision property the replay depends on. `serialize()` throws
-rather than chunk, so the failure happens at write time in a test, not during
-a demo.
+rather than chunk, so an oversized entry fails at write time, in a test, rather
+than silently splitting in production.
 
 **Ids and hashes only.** Documents stay behind their hashes. Person ids are
 deliberately **not** published: a World ID nullifier is pseudonymous but still
