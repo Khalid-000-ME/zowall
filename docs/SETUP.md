@@ -1,6 +1,7 @@
 # Credential setup
 
-Seven values left to fill in `.env.local`. Everything else is already done.
+Five values left to fill in `.env.local`. Everything else is done, including
+the deploy.
 
 Every URL and constraint below was checked live on 2026-11-05. Do them in this
 order — step 2 needs step 1, and step 4 needs step 3.
