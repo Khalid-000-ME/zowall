@@ -9,12 +9,18 @@ Your two EVM keys are already generated and in `.env.local`:
 
 | Address | Role | Needs funding |
 |---|---|---|
-| `0xEA9C5E362a56662Eeb8c18962121C7A35Fc9B26d` | Deployer / buyer treasury | **Yes** — WBT for gas, USDT for the vault |
-| `0xdCa82154FA9f7a95277729e9a6861f4E023ab997` | Attestor (signs role attestations) | No, it only signs |
+| `0xEA9C5E362a56662Eeb8c18962121C7A35Fc9B26d` | Deployer / buyer treasury | funded ✅ |
+| `0xdCa82154FA9f7a95277729e9a6861f4E023ab997` | Attestor (signs role attestations) | no, it only signs |
+| `0xa957e1D8ce0498A73b5AFC1b2f8CA0cB6678C127` | Demo vendor (e2e runner) | no |
+
+**Steps 1 and 2 are done.** Five values remain: three from the World portal and
+two from the Hedera portal (plus the topic, which a command creates).
 
 ---
 
-## 1. Whitechain faucet → funds the deployer
+## 1. Whitechain faucet → funds the deployer  ✅ DONE
+
+The deployer holds WBT for gas and the vault holds 5 USDT. Kept for reference.
 
 **Do this first.** It has a constraint that can block you, and if it does you
 need to know in hour one, not hour twenty.
@@ -56,7 +62,20 @@ Divide by 1,000,000 to read it as USDT. Aim for at least 10,000 (`10000000000`).
 
 ---
 
-## 2. Deploy the gate → `GATE_ADDRESS`
+## 2. Deploy the gate → `GATE_ADDRESS`  ✅ DONE
+
+Already deployed and verified:
+**`0x2ced329ea70c1740a707e620668575e79ec1f84d`**, with 5 USDT in the vault.
+`GATE_ADDRESS` is filled in. The rest of this section is kept for a redeploy.
+
+Two things to know if you do redeploy:
+
+- Foundry fails with `Chain 1874 not supported` if `foundry.toml` has an
+  `[etherscan]` block, so verification flags go on the command line instead.
+- **There is no withdraw function**, deliberately — a vault you can empty is
+  not a reservation. So a redeploy strands the old gate's USDT unless you drain
+  it first, and there is only one faucet drip. Drain it by raising a purchase
+  order on the old gate that pays out to yourself.
 
 Needs step 1 funded.
 
