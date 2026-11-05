@@ -1,0 +1,19 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+test = "test"
+solc = "0.8.30"
+# highest target that runs on both Whitechain mainnet and Whitechain Sepolia
+evm_version = "prague"
+optimizer = true
+optimizer_runs = 200
+
+[profile.default.fuzz]
+runs = 512
+
+[rpc_endpoints]
+whitechain_sepolia = "https://rpc.testnet.whitechain.io"
+
+[etherscan]
+whitechain_sepolia = { key = "", url = "https://explorer.testnet.whitechain.io/api/", chain = 1874 }
