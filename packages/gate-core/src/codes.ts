@@ -52,6 +52,15 @@ export const OUTCOME_CODE: Readonly<Record<Outcome, number>> = Object.freeze({
   REJECTED: 2,
 });
 
+/**
+ * Non-throwing check, for anything read off a public topic or an API body.
+ * A journal written by a different version of the rules must be reportable,
+ * not fatal.
+ */
+export function isReasonCode(value: string): value is ReasonCode {
+  return (REASON_CODES as readonly string[]).includes(value);
+}
+
 export function bitOf(code: ReasonCode): number {
   const i = REASON_CODES.indexOf(code);
   if (i < 0) throw new Error(`unknown reason code: ${code}`);

@@ -87,12 +87,15 @@ export type JournalEntry =
   | POCancelledEntry;
 
 export class EntryTooLargeError extends Error {
-  constructor(readonly bytes: number) {
+  readonly bytes: number;
+
+  constructor(bytes: number) {
     super(
       `journal entry is ${bytes} bytes, over the ${MAX_HCS_MESSAGE_BYTES}-byte HCS limit. ` +
         `Never chunk a journal entry - put the detail behind a hash instead.`,
     );
     this.name = "EntryTooLargeError";
+    this.bytes = bytes;
   }
 }
 
