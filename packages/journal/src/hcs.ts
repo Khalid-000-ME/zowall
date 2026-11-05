@@ -38,6 +38,37 @@ async function sdk(): Promise<HashgraphModule> {
 }
 
 /**
+ * Parse a Hedera private key without caring which curve it is.
+ *
+ * The developer portal hands out ECDSA keys in DER form (starting `303`),
+ * while plenty of docs and examples assume ED25519 (`302e`). Calling
+ * `fromStringED25519` on a portal key throws BadKeyError, which looks like a
+ * credential problem and is really a parser problem - so accept DER for
+ * either curve and fall back to the raw-hex forms.
+ */
+async function parseKey(value: string): Promise<import("@hashgraph/sdk").PrivateKey> {
+  const { PrivateKey } = await sdk();
+  const raw = value.trim();
+
+  for (const parse of [
+    () => PrivateKey.fromStringDer(raw),
+    () => PrivateKey.fromStringECDSA(raw),
+    () => PrivateKey.fromStringED25519(raw),
+  ]) {
+    try {
+      return parse();
+    } catch {
+      // try the next form
+    }
+  }
+
+  throw new Error(
+    "could not read the Hedera private key. Paste the DER Encoded Private Key " +
+      "from portal.hedera.com exactly as shown (it starts with 303 for ECDSA).",
+  );
+}
+
+/**
  * Create the journal topic. Run once, at setup; the id belongs in the README.
  *
  * An admin key is deliberately NOT set. Without one the topic is immutable and
@@ -54,12 +85,12 @@ export async function createTopic(config: {
 }): Promise<{ topicId: string; submitKey: string }> {
   const { Client, PrivateKey, TopicCreateTransaction } = await sdk();
 
-  const operatorKey = PrivateKey.fromStringED25519(config.operatorKey);
+  const operatorKey = await parseKey(config.operatorKey);
   const client = (config.network === "mainnet" ? Client.forMainnet() : Client.forTestnet())
     .setOperator(config.operatorId, operatorKey);
 
   const submitKey = config.submitKey
-    ? PrivateKey.fromStringED25519(config.submitKey)
+    ? await parseKey(config.submitKey)
     : PrivateKey.generateED25519();
 
   try {
@@ -95,17 +126,17 @@ export class JournalWriter {
    * be one decision per entry.
    */
   async write(entry: JournalEntry): Promise<WriteResult> {
-    const { Client, PrivateKey, TopicMessageSubmitTransaction } = await sdk();
+    const { Client, TopicMessageSubmitTransaction } = await sdk();
 
     const message = serialize(entry);
-    const operatorKey = PrivateKey.fromStringED25519(this.#config.operatorKey);
+    const operatorKey = await parseKey(this.#config.operatorKey);
     const client = (
       this.#config.network === "mainnet" ? Client.forMainnet() : Client.forTestnet()
     ).setOperator(this.#config.operatorId, operatorKey);
 
     try {
       const submitKey = this.#config.submitKey
-        ? PrivateKey.fromStringED25519(this.#config.submitKey)
+        ? await parseKey(this.#config.submitKey)
         : operatorKey;
 
       // A private topic needs the submit key explicitly: .execute() alone
