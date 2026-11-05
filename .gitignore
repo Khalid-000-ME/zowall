@@ -30,3 +30,7 @@ tmp/
 # internal strategy docs - keep local, never publish
 PRD-no-po-no-pay.md
 CONTEXT-research-insights.md
+
+# hackathon strategy and research-derived notes - keep local, never publish
+docs/WORLD.md
+docs/BOOTH.md
