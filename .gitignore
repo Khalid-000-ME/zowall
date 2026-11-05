@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+out/
+cache/
+broadcast/
+.next/
+*.tsbuildinfo
+
+# env & secrets
+.env
+.env.*
+!.env.example
+
+# foundry
+lib/
+
+# os / editor
+.DS_Store
+*.log
+.vscode/
+.idea/
+
+# local scratch
+scratch/
+tmp/
