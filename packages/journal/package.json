@@ -1,0 +1,22 @@
+{
+  "name": "@zowall/journal",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hedera HCS journal writer, mirror-node reader and replay CLI.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "journal": "./src/cli.ts"
+  },
+  "scripts": {
+    "start": "node src/cli.ts",
+    "test": "node --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@zowall/gate-core": "workspace:*"
+  }
+}
