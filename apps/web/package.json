@@ -1,0 +1,30 @@
+{
+  "name": "@zowall/web",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@worldcoin/idkit": "4.6.0",
+    "@worldcoin/idkit-core": "4.6.0",
+    "@zowall/agent": "workspace:*",
+    "@zowall/gate-core": "workspace:*",
+    "@zowall/journal": "workspace:*",
+    "@zowall/sdk": "workspace:*",
+    "@zowall/world": "workspace:*",
+    "lucide-react": "0.468.0",
+    "next": "16.0.1",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "viem": "2.21.55"
+  },
+  "devDependencies": {
+    "@types/react": "19.0.1",
+    "@types/react-dom": "19.0.2"
+  }
+}

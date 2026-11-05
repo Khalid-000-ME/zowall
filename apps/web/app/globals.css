@@ -1,0 +1,152 @@
+/*
+ * Tokens. Nothing in a component hardcodes a colour, a radius or a space.
+ *
+ * The palette is deliberately quiet: this is a finance control, and a page
+ * that looks like a trading terminal undercuts the argument that it is the
+ * boring, auditable thing in the stack. One accent, used only for the primary
+ * action, and three semantic colours that mean exactly one thing each -
+ * paid, held, rejected.
+ */
+
+:root {
+  --bg: #fbfaf8;
+  --surface: #ffffff;
+  --surface-sunken: #f4f2ee;
+  --border: #e4e0d8;
+  --border-strong: #cdc7ba;
+
+  --text: #1a1815;
+  --text-muted: #6b665c;
+  --text-faint: #9a948a;
+
+  --accent: #1a1815;
+  --accent-text: #fbfaf8;
+
+  /* One colour per outcome, never reused for decoration. */
+  --paid: #1f6f45;
+  --paid-bg: #e8f3ec;
+  --held: #8a5a10;
+  --held-bg: #fbf0dd;
+  --rejected: #9b2c23;
+  --rejected-bg: #fbeae8;
+
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 72px;
+
+  --measure: 68ch;
+  --page: 1140px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12110f;
+    --surface: #1a1816;
+    --surface-sunken: #221f1c;
+    --border: #2e2a26;
+    --border-strong: #433d36;
+
+    --text: #f2efe9;
+    --text-muted: #a39c91;
+    --text-faint: #6f6861;
+
+    --accent: #f2efe9;
+    --accent-text: #12110f;
+
+    --paid: #5cc08a;
+    --paid-bg: #152a1f;
+    --held: #d9a94a;
+    --held-bg: #2b2112;
+    --rejected: #e8847a;
+    --rejected-bg: #2c1716;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #12110f;
+  --surface: #1a1816;
+  --surface-sunken: #221f1c;
+  --border: #2e2a26;
+  --border-strong: #433d36;
+  --text: #f2efe9;
+  --text-muted: #a39c91;
+  --text-faint: #6f6861;
+  --accent: #f2efe9;
+  --accent-text: #12110f;
+  --paid: #5cc08a;
+  --paid-bg: #152a1f;
+  --held: #d9a94a;
+  --held-bg: #2b2112;
+  --rejected: #e8847a;
+  --rejected-bg: #2c1716;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+/* Numbers, amounts, addresses and hashes. Tabular so nothing jitters. */
+.mono,
+code,
+pre {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.92em;
+}
+
+a {
+  color: inherit;
+}
+
+.page {
+  width: min(var(--page), calc(100% - 2rem));
+  margin-inline: auto;
+}
+
+@media (max-width: 640px) {
+  .page {
+    width: calc(100% - 32px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
