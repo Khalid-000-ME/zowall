@@ -1,0 +1,17 @@
+{
+  "name": "@zowall/agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A deliberately gullible buyer agent. It is supposed to fall for this.",
+  "license": "MIT",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "test": "node --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@zowall/gate-core": "workspace:*",
+    "@zowall/sdk": "workspace:*"
+  }
+}

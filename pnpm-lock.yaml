@@ -15,6 +15,15 @@ importers:
         specifier: 5.9.2
         version: 5.9.2
 
+  packages/agent:
+    dependencies:
+      '@zowall/gate-core':
+        specifier: workspace:*
+        version: link:../gate-core
+      '@zowall/sdk':
+        specifier: workspace:*
+        version: link:../sdk
+
   packages/contracts: {}
 
   packages/gate-core: {}
@@ -24,6 +33,15 @@ importers:
       '@hashgraph/sdk':
         specifier: 2.64.5
         version: 2.64.5(bn.js@5.2.5)(react-native@0.88.1(@babel/core@7.29.13)(react@19.3.1))
+      '@zowall/gate-core':
+        specifier: workspace:*
+        version: link:../gate-core
+      viem:
+        specifier: 2.21.55
+        version: 2.21.55(typescript@5.9.2)
+
+  packages/sdk:
+    dependencies:
       '@zowall/gate-core':
         specifier: workspace:*
         version: link:../gate-core

@@ -1,0 +1,17 @@
+{
+  "name": "@zowall/sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Drop-in gate for an agent that pays. gate.pay(invoice, sig).",
+  "license": "MIT",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "test": "node --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@zowall/gate-core": "workspace:*",
+    "viem": "2.21.55"
+  }
+}
