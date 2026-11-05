@@ -1,7 +1,8 @@
 # Credential setup
 
-Five values left to fill in `.env.local`. Everything else is done, including
-the deploy.
+**Three values left**, all from the World Developer Portal. Everything else is
+done: the gate is deployed and verified, the vault is funded, the Hedera
+account is connected and the journal topic is live.
 
 Every URL and constraint below was checked live on 2026-11-05. Do them in this
 order — step 2 needs step 1, and step 4 needs step 3.
@@ -14,8 +15,14 @@ Your two EVM keys are already generated and in `.env.local`:
 | `0xdCa82154FA9f7a95277729e9a6861f4E023ab997` | Attestor (signs role attestations) | no, it only signs |
 | `0xa957e1D8ce0498A73b5AFC1b2f8CA0cB6678C127` | Demo vendor (e2e runner) | no |
 
-**Steps 1 and 2 are done.** Five values remain: three from the World portal and
-two from the Hedera portal (plus the topic, which a command creates).
+**Steps 1-4 and 6 are done.** Only step 5 (World) is left.
+
+| | |
+|---|---|
+| `ZowallGate` | `0x1fcb96e5e1a092bab2376517036113beb3cc9c5a` — verified |
+| Vault | 5 USDT, fully unreserved |
+| Hedera account | `0.0.8258062`, ~840 HBAR |
+| Journal topic | `0.0.11326973` — 4 decisions, replay passes |
 
 ---
 
@@ -116,7 +123,7 @@ cast send 0xcedfB56113143d55b2358b8CFbB0dEB5Ad2f55a7 \
 
 ---
 
-## 3. Hedera portal → `HEDERA_ACCOUNT_ID`, `HEDERA_PRIVATE_KEY`, `X402_PAY_TO`
+## 3. Hedera portal → `HEDERA_ACCOUNT_ID`, `HEDERA_PRIVATE_KEY`, `X402_PAY_TO`  ✅ DONE
 
 1. Open **https://portal.hedera.com/signup** and create an account.
 2. On the dashboard, make sure the network is **Testnet**. The account is
@@ -133,14 +140,19 @@ cast send 0xcedfB56113143d55b2358b8CFbB0dEB5Ad2f55a7 \
      HEDERA_PRIVATE_KEY=3030...
      ```
 
-The portal issues **ECDSA** keys in DER form. Paste it exactly as shown — do
-not convert it. The code accepts either curve, but a truncated or re-encoded
-key fails with `BadKeyError`, which looks like a bad credential and is really a
-bad paste.
+The portal issues **ECDSA** keys. Paste exactly what it shows.
+
+The parser picks its curve from the key's *shape*, which matters more than it
+sounds: given plain 32-byte hex, Hedera's `fromStringDer` succeeds but reads it
+as the wrong curve, so you get a well-formed key with the wrong public half and
+every transaction fails precheck with `INVALID_SIGNATURE` — which reads as a
+permissions problem and is really a parsing problem. DER (starting `302`/`303`)
+is unambiguous; raw hex defaults to ECDSA, and `HEDERA_KEY_TYPE=ed25519`
+overrides.
 
 ---
 
-## 4. Create the journal topic → `HEDERA_TOPIC_ID`, `HEDERA_SUBMIT_KEY`
+## 4. Create the journal topic → `HEDERA_TOPIC_ID`, `HEDERA_SUBMIT_KEY`  ✅ DONE
 
 Needs step 3.
 
