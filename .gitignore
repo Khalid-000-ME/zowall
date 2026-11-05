@@ -15,8 +15,7 @@ broadcast/
 .env.*
 !.env.example
 
-# foundry
-lib/
+# foundry (lib/ is a git submodule, tracked as a pointer)
 
 # os / editor
 .DS_Store

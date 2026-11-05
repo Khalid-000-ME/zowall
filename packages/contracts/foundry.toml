@@ -8,6 +8,9 @@ solc = "0.8.30"
 evm_version = "prague"
 optimizer = true
 optimizer_runs = 200
+# the decision digest packs fourteen words in one call; via_ir clears the
+# stack-too-deep that the legacy pipeline hits there
+via_ir = true
 
 [profile.default.fuzz]
 runs = 512

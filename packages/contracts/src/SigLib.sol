@@ -17,7 +17,8 @@ library SigLib {
         bytes32 r;
         bytes32 s;
         uint8 v;
-        assembly {
+        // only reads from the `sig` bytes array, writes nothing
+        assembly ("memory-safe") {
             r := mload(add(sig, 0x20))
             s := mload(add(sig, 0x40))
             v := byte(0, mload(add(sig, 0x60)))
