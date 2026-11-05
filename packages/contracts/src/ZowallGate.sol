@@ -79,6 +79,9 @@ contract ZowallGate {
         uint8 role;
         uint64 expiry;
         uint256 poId;
+        /// @dev Makes two attestations for the same person, role and PO
+        ///      distinct, so one human can raise two POs in a single block.
+        uint256 nonce;
         bytes sig;
     }
 
@@ -155,6 +158,11 @@ contract ZowallGate {
         uint256 indexed poId,
         bool approved,
         bytes32 approverPersonId,
+        uint256 paid,
+        /// @dev Extra reservation the override had to draw from free balance.
+        ///      Non-zero means a human knowingly committed more than the PO
+        ///      originally reserved, and that is on the record.
+        uint256 amended,
         bytes32 journalDigest
     );
 
@@ -182,9 +190,7 @@ contract ZowallGate {
         attestor = _attestor;
         domainSeparator = keccak256(
             abi.encode(
-                keccak256(
-                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-                ),
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
                 keccak256("Zowall"),
                 keccak256("1"),
                 block.chainid,
@@ -196,14 +202,14 @@ contract ZowallGate {
     /* -------------------------------------------------------- PO lifecycle */
 
     /// @notice Raise a purchase order and reserve its total against the vault.
-    function createPO(POInput calldata po, Attestation calldata a)
-        external
-        returns (uint256 poId)
-    {
+    function createPO(POInput calldata po, Attestation calldata a) external returns (uint256 poId) {
         if (po.qty == 0) revert ZeroQuantity();
         _useAttestation(a, Role.Creator, 0);
 
-        uint256 total = uint256(po.qty) * uint256(po.unitPrice);
+        // Reserve the tolerance ceiling, not the headline total. A 5%
+        // tolerance means an invoice at 42 is legitimate, and a reservation of
+        // only 40 would refuse to settle an invoice the rules just approved.
+        uint256 total = MatchEngine.withTolerance(uint256(po.qty) * uint256(po.unitPrice), po.priceTolBps);
         uint256 balance = usdt.balanceOf(address(this));
         if (balance < totalEncumbered + total) {
             revert NotEnoughBalanceToEncumber(totalEncumbered + total, balance);
@@ -248,9 +254,7 @@ contract ZowallGate {
         p.status = MatchEngine.POStatus.Cancelled;
 
         emit POCancelled(
-            poId,
-            released,
-            _digest(poId, bytes32(0), MatchEngine.Outcome.Rejected, 0, p, 0, 0, bytes32(0), 0)
+            poId, released, _digest(poId, bytes32(0), MatchEngine.Outcome.Rejected, 0, p, 0, 0, bytes32(0), 0)
         );
     }
 
@@ -258,12 +262,7 @@ contract ZowallGate {
      * @notice Record goods as received. Gated on a fresh human check, and the
      *         receiver must not be the person who raised the PO.
      */
-    function attestReceipt(
-        uint256 poId,
-        uint128 qty,
-        bytes32 deliverableHash,
-        Attestation calldata a
-    ) external {
+    function attestReceipt(uint256 poId, uint128 qty, bytes32 deliverableHash, Attestation calldata a) external {
         PurchaseOrder storage p = _pos[poId];
         if (p.status != MatchEngine.POStatus.Open) revert PONotOpen(poId);
         if (qty == 0) revert ZeroQuantity();
@@ -299,7 +298,7 @@ contract ZowallGate {
         PurchaseOrder storage p = _pos[inv.poId];
         address signer = _invoiceDigest(inv).tryRecover(vendorSig);
 
-        (uint32 mask, MatchEngine.Outcome o) = _evaluate(p, inv, signer, bytes32(0));
+        (uint32 mask, MatchEngine.Outcome o) = _evaluate(p, inv, signer, bytes32(0), true);
         outcome = o;
 
         // A duplicate is recorded on first sight, so the second submission of
@@ -335,9 +334,7 @@ contract ZowallGate {
             mask,
             paid,
             holdId,
-            _digest(
-                inv.poId, inv.invoiceHash, o, mask, p, inv.qty, inv.unitPrice, bytes32(0), inv.nonce
-            )
+            _digest(inv.poId, inv.invoiceHash, o, mask, p, inv.qty, inv.unitPrice, bytes32(0), inv.nonce)
         );
     }
 
@@ -361,9 +358,13 @@ contract ZowallGate {
         h.resolvedBy = a.personId;
 
         uint256 paid;
+        uint256 amended;
         if (approve) {
-            // An override still cannot spend more than was reserved. This is
-            // what stops an approved over-priced invoice draining the vault.
+            // A variance that a third human accepts is a purchase order
+            // amendment, so the shortfall is drawn from free balance and
+            // recorded. It can never come out of another PO's reservation,
+            // which is the invariant that actually matters here.
+            amended = _amend(p, uint256(h.qty) * uint256(h.unitPrice));
             paid = _settle(p, h.payee, h.qty, h.unitPrice);
         }
 
@@ -372,6 +373,8 @@ contract ZowallGate {
             h.poId,
             approve,
             a.personId,
+            paid,
+            amended,
             _digest(
                 h.poId,
                 h.invoiceHash,
@@ -411,8 +414,10 @@ contract ZowallGate {
 
         // The signature was already checked when the hold was created, and the
         // stored document is the one that was signed, so the vendor key is
-        // taken as given here rather than re-recovered.
-        (uint32 mask, MatchEngine.Outcome o) = _evaluate(p, inv, p.vendor, bytes32(0));
+        // taken as given here rather than re-recovered. The duplicate check is
+        // skipped too: this invoice IS the held one, and it was marked seen the
+        // moment it first arrived.
+        (uint32 mask, MatchEngine.Outcome o) = _evaluate(p, inv, p.vendor, bytes32(0), false);
         outcome = o;
 
         uint256 paid;
@@ -453,7 +458,7 @@ contract ZowallGate {
     {
         PurchaseOrder storage p = _pos[inv.poId];
         address signer = _invoiceDigest(inv).tryRecover(vendorSig);
-        return _evaluate(p, inv, signer, bytes32(0));
+        return _evaluate(p, inv, signer, bytes32(0), true);
     }
 
     /// @notice Balance beyond every live reservation. Free to withdraw.
@@ -468,7 +473,8 @@ contract ZowallGate {
         PurchaseOrder storage p,
         Invoice memory inv,
         address signer,
-        bytes32 approverPersonId
+        bytes32 approverPersonId,
+        bool checkDuplicate
     ) private view returns (uint32 mask, MatchEngine.Outcome outcome) {
         MatchEngine.Ctx memory c = MatchEngine.Ctx({
             poExists: p.status != MatchEngine.POStatus.None,
@@ -488,7 +494,7 @@ contract ZowallGate {
             invQty: inv.qty,
             invUnitPrice: inv.unitPrice,
             invDeadline: inv.deadline,
-            alreadySeen: invoiceSeen[inv.invoiceHash],
+            alreadySeen: checkDuplicate && invoiceSeen[inv.invoiceHash],
             creatorPersonId: p.creatorPersonId,
             receiverPersonId: p.receiverPersonId,
             approverPersonId: approverPersonId,
@@ -522,6 +528,24 @@ contract ZowallGate {
         if (!usdt.transfer(payee, amount)) revert TransferFailed();
     }
 
+    /**
+     * @dev Raise this PO's reservation to cover `needed`, taking the shortfall
+     *      from balance that no other PO has reserved. Reverts rather than
+     *      borrowing, so an override on one purchase order can never spend
+     *      another one's encumbered funds.
+     */
+    function _amend(PurchaseOrder storage p, uint256 needed) private returns (uint256 extra) {
+        if (needed <= p.encumbered) return 0;
+        extra = needed - p.encumbered;
+
+        uint256 balance = usdt.balanceOf(address(this));
+        uint256 free = balance > totalEncumbered ? balance - totalEncumbered : 0;
+        if (extra > free) revert ExceedsEncumbrance(needed, p.encumbered + free);
+
+        p.encumbered += extra;
+        totalEncumbered += extra;
+    }
+
     /// @dev Verifies a role attestation and burns it, so one proof authorises
     ///      one action.
     function _useAttestation(Attestation calldata a, Role role, uint256 poId) private {
@@ -540,7 +564,7 @@ contract ZowallGate {
     );
 
     bytes32 private constant ATTESTATION_TYPEHASH =
-        keccak256("Attestation(bytes32 personId,uint8 role,uint64 expiry,uint256 poId)");
+        keccak256("Attestation(bytes32 personId,uint8 role,uint64 expiry,uint256 poId,uint256 nonce)");
 
     function _invoiceDigest(Invoice memory inv) private view returns (bytes32) {
         return keccak256(
@@ -569,7 +593,7 @@ contract ZowallGate {
             abi.encodePacked(
                 "\x19\x01",
                 domainSeparator,
-                keccak256(abi.encode(ATTESTATION_TYPEHASH, a.personId, a.role, a.expiry, a.poId))
+                keccak256(abi.encode(ATTESTATION_TYPEHASH, a.personId, a.role, a.expiry, a.poId, a.nonce))
             )
         );
     }

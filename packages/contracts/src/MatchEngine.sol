@@ -130,8 +130,7 @@ library MatchEngine {
         bytes32 a = c.creatorPersonId;
         bytes32 b = c.receiverPersonId;
         bytes32 d = c.approverPersonId;
-        bool clash = (a != bytes32(0) && a == b) || (a != bytes32(0) && a == d)
-            || (b != bytes32(0) && b == d);
+        bool clash = (a != bytes32(0) && a == b) || (a != bytes32(0) && a == d) || (b != bytes32(0) && b == d);
         return clash ? ReasonCodes.SOD_VIOLATION : 0;
     }
 
