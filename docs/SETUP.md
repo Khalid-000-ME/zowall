@@ -1,268 +1,186 @@
-# Credential setup
+# Setup
 
-**Every credential is filled in.** The gate is deployed and verified, the vault
-is funded, the Hedera account and journal topic are live, and the World portal
-values are set.
+What to configure, in dependency order. Copy `.env.example` to `.env.local` at
+the repo root and fill it in as you go — nothing has a working default, because
+a build running on a placeholder credential is harder to debug than one that
+fails loudly.
 
-What is left is not credentials — see [WORLD.md](WORLD.md) for the two open
-items: getting three distinct mocked identities, and whether the $5,000 track
-needs `@worldcoin/agentkit`.
+`pnpm install` symlinks the root `.env.local` into `apps/web`, which Next needs
+because it only reads env files from its own directory.
 
-Every URL and constraint below was checked live on 2026-11-05. Do them in this
-order — step 2 needs step 1, and step 4 needs step 3.
+Requires Node 24+, pnpm 10+ and Foundry.
 
-Your two EVM keys are already generated and in `.env.local`:
+---
 
-| Address | Role | Needs funding |
+## 1. Whitechain Sepolia keys
+
+Two keys, both generated locally:
+
+| Variable | Role | Needs funding |
 |---|---|---|
-| `0xEA9C5E362a56662Eeb8c18962121C7A35Fc9B26d` | Deployer / buyer treasury | funded ✅ |
-| `0xdCa82154FA9f7a95277729e9a6861f4E023ab997` | Attestor (signs role attestations) | no, it only signs |
-| `0xa957e1D8ce0498A73b5AFC1b2f8CA0cB6678C127` | Demo vendor (e2e runner) | no |
-
-**All steps are done.** Kept below for reference and for a rebuild.
-
-| | |
-|---|---|
-| `ZowallGate` | `0x1fcb96e5e1a092bab2376517036113beb3cc9c5a` — verified |
-| Vault | 5 USDT, fully unreserved |
-| Hedera account | `0.0.8258062`, ~840 HBAR |
-| Journal topic | `0.0.11326973` — 4 decisions, replay passes |
-
----
-
-## 1. Whitechain faucet → funds the deployer  ✅ DONE
-
-The deployer holds WBT for gas and the vault holds 5 USDT. Kept for reference.
-
-**Do this first.** It has a constraint that can block you, and if it does you
-need to know in hour one, not hour twenty.
-
-1. Open **https://faucet.testnet.whitechain.io**
-2. Click **Continue with GitHub**.
-   - **Your GitHub account must be at least 30 days old**, and each GitHub
-     account gets **one drip only**. If yours is too new, borrow a teammate's —
-     this is the single hardest thing to work around later.
-3. Paste the deployer address: `0xEA9C5E362a56662Eeb8c18962121C7A35Fc9B26d`
-4. Claim, then confirm it arrived:
+| `PRIVATE_KEY` | Deploys the gate and holds the buyer treasury | WBT for gas, and USDT for the vault |
+| `ATTESTOR_PRIVATE_KEY` | Signs EIP-712 role attestations after a World proof verifies | no, it only signs |
 
 ```bash
-cast balance 0xEA9C5E362a56662Eeb8c18962121C7A35Fc9B26d \
+cast wallet new    # once per key
+```
+
+`ATTESTOR_ADDRESS` is the attestor key's public address and is passed to the
+constructor. The attestor key must stay server-side: anything holding it can
+mint a verified human.
+
+Fund the deployer with WBT for gas from the Whitechain testnet faucet, and with
+USDT from whatever testnet source you have. The vault settles in the real
+Whitechain Sepolia USDT at `USDT_ADDRESS` (6 decimals), not a stand-in token.
+
+```bash
+cast balance $DEPLOYER --rpc-url https://rpc.testnet.whitechain.io
+cast call $USDT_ADDRESS "balanceOf(address)(uint256)" $DEPLOYER \
   --rpc-url https://rpc.testnet.whitechain.io
 ```
 
-Nothing to copy into `.env.local` from this step.
-
-### You also need test USDT
-
-WBT is only gas. The vault has to hold **real Whitechain Sepolia USDT**
-(`0xcedfB56113143d55b2358b8CFbB0dEB5Ad2f55a7`, 6 decimals) because a
-self-minted token does not count for the Whitechain tracks.
-
-The faucet above may not dispense it. **Ask at the Whitechain booth for testnet
-USDT to that address** — this is a question to ask in hour one, because without
-it the main flow cannot settle and the track requirement goes unmet.
-
-Check what you have:
-
-```bash
-cast call 0xcedfB56113143d55b2358b8CFbB0dEB5Ad2f55a7 \
-  "balanceOf(address)(uint256)" 0xEA9C5E362a56662Eeb8c18962121C7A35Fc9B26d \
-  --rpc-url https://rpc.testnet.whitechain.io
-```
-
-Divide by 1,000,000 to read it as USDT. Aim for at least 10,000 (`10000000000`).
+Divide the USDT figure by 1,000,000 to read it as whole tokens.
 
 ---
 
-## 2. Deploy the gate → `GATE_ADDRESS`  ✅ DONE
-
-Already deployed and verified:
-**`0x2ced329ea70c1740a707e620668575e79ec1f84d`**, with 5 USDT in the vault.
-`GATE_ADDRESS` is filled in. The rest of this section is kept for a redeploy.
-
-Two things to know if you do redeploy:
-
-- Foundry fails with `Chain 1874 not supported` if `foundry.toml` has an
-  `[etherscan]` block, so verification flags go on the command line instead.
-- **There is no withdraw function**, deliberately — a vault you can empty is
-  not a reservation. So a redeploy strands the old gate's USDT unless you drain
-  it first, and there is only one faucet drip. Drain it by raising a purchase
-  order on the old gate that pays out to yourself.
-
-Needs step 1 funded.
+## 2. Deploy the gate → `GATE_ADDRESS`
 
 ```bash
 set -a; source .env.local; set +a
 
-forge script script/DeployGate.s.sol \
+forge script script/DeployGate.s.sol:DeployGate \
   --root packages/contracts \
   --rpc-url https://rpc.testnet.whitechain.io/ \
-  --private-key $PRIVATE_KEY \
-  --broadcast --verify \
-  --verifier blockscout \
-  --verifier-url https://explorer.testnet.whitechain.io/api/
+  --private-key $PRIVATE_KEY --broadcast
 ```
 
-The script refuses to deploy if the USDT contract does not report 6 decimals,
-so a wrong token address fails loudly instead of silently breaking every amount.
+The script refuses to deploy unless the token at `USDT_ADDRESS` reports 6
+decimals, so a wrong address fails immediately rather than making every amount
+wrong by a factor of a trillion.
 
-Copy the printed `ZowallGate` address:
-
-```
-GATE_ADDRESS=0x...
-```
-
-Then confirm it shows as **verified** at
-`https://explorer.testnet.whitechain.io/address/<GATE_ADDRESS>` — the
-Whitechain tracks require verified, not just deployed. The trailing `/api/` on
-the verifier URL is required.
-
-Finally, send the vault its USDT:
+Verify the source:
 
 ```bash
-cast send 0xcedfB56113143d55b2358b8CFbB0dEB5Ad2f55a7 \
-  "transfer(address,uint256)" $GATE_ADDRESS 10000000000 \
+forge verify-contract $GATE_ADDRESS src/ZowallGate.sol:ZowallGate \
+  --root packages/contracts \
+  --rpc-url https://rpc.testnet.whitechain.io/ \
+  --verifier blockscout \
+  --verifier-url https://explorer.testnet.whitechain.io/api/ \
+  --constructor-args $(cast abi-encode "constructor(address,address)" \
+    $USDT_ADDRESS $ATTESTOR_ADDRESS) --watch
+```
+
+Two traps:
+
+- Foundry fails with `Chain 1874 not supported` if `foundry.toml` contains an
+  `[etherscan]` block, so the verifier is configured on the command line.
+- The trailing `/api/` on the verifier URL is required.
+
+Then send the vault its USDT:
+
+```bash
+cast send $USDT_ADDRESS "transfer(address,uint256)" $GATE_ADDRESS <amount> \
   --rpc-url https://rpc.testnet.whitechain.io --private-key $PRIVATE_KEY
 ```
 
+**There is no withdraw function.** A vault the operator can empty is not a
+reservation, and a vendor's reason to trust an encumbrance is that nobody can
+take it back. The cost is that redeploying strands the old vault, so drain it
+first with `packages/e2e/src/migrate.ts`, which moves the balance out through a
+real purchase order that pays out.
+
 ---
 
-## 3. Hedera portal → `HEDERA_ACCOUNT_ID`, `HEDERA_PRIVATE_KEY`, `X402_PAY_TO`  ✅ DONE
+## 3. Hedera account → `HEDERA_ACCOUNT_ID`, `HEDERA_PRIVATE_KEY`
 
-1. Open **https://portal.hedera.com/signup** and create an account.
-2. On the dashboard, make sure the network is **Testnet**. The account is
-   funded automatically with **1000 HBAR**.
-3. Copy two values:
-   - **Account ID**, like `0.0.1234` →
-     ```
-     HEDERA_ACCOUNT_ID=0.0.1234
-     X402_PAY_TO=0.0.1234
-     ```
-     (same value in both — this account both pays fees and receives x402 payments)
-   - **DER Encoded Private Key**, a long string starting `303…` →
-     ```
-     HEDERA_PRIVATE_KEY=3030...
-     ```
+Create a testnet account at https://portal.hedera.com/signup. It is funded
+automatically. Copy the **Account ID** (`0.0.x`) and the **DER Encoded Private
+Key**, and set `X402_PAY_TO` to the same account id — it both pays fees and
+receives x402 payments.
 
 The portal issues **ECDSA** keys. Paste exactly what it shows.
 
-The parser picks its curve from the key's *shape*, which matters more than it
-sounds: given plain 32-byte hex, Hedera's `fromStringDer` succeeds but reads it
-as the wrong curve, so you get a well-formed key with the wrong public half and
-every transaction fails precheck with `INVALID_SIGNATURE` — which reads as a
-permissions problem and is really a parsing problem. DER (starting `302`/`303`)
+The parser picks its curve from the key's shape, which matters more than it
+sounds: given plain 32-byte hex, Hedera's `fromStringDer` *succeeds* but reads
+it as the wrong curve, so you get a well-formed key with the wrong public half
+and every transaction fails precheck with `INVALID_SIGNATURE` — which reads as
+a permissions problem and is really a parsing problem. DER (starting `302`/`303`)
 is unambiguous; raw hex defaults to ECDSA, and `HEDERA_KEY_TYPE=ed25519`
 overrides.
 
 ---
 
-## 4. Create the journal topic → `HEDERA_TOPIC_ID`, `HEDERA_SUBMIT_KEY`  ✅ DONE
-
-Needs step 3.
+## 4. Journal topic → `HEDERA_TOPIC_ID`, `HEDERA_SUBMIT_KEY`
 
 ```bash
-set -a; source .env.local; set +a
 node packages/journal/src/cli.ts create-topic
 ```
 
-It prints:
-
-```
-topic      0.0.XXXXXX
-submit key 302e...
-hashscan   https://hashscan.io/testnet/topic/0.0.XXXXXX
-```
-
-```
-HEDERA_TOPIC_ID=0.0.XXXXXX
-HEDERA_SUBMIT_KEY=302e...
-```
-
-**Run this exactly once.** The topic is created with a submit key and **no
-admin key**, which makes it immutable and undeletable — that is deliberate, and
-it is the stronger claim to make to an auditor. A second run makes a second
-topic and orphans the first.
-
-Put the topic id in the README, and open the HashScan link to confirm it exists.
+**Run this once.** The topic is created with a submit key and no admin key, so
+only this service can append and the topic is immutable and undeletable. That
+is deliberate — it is a stronger claim than "we could edit it but won't" — but
+it means a second run creates a second topic and orphans the first.
 
 ---
 
-## 5. World Developer Portal → `WORLD_APP_ID`, `WORLD_RP_ID`, `WORLD_RP_SIGNING_KEY`  ✅ DONE
+## 5. World ID → `WORLD_APP_ID`, `WORLD_RP_ID`, `WORLD_RP_SIGNING_KEY`
 
-1. Open **https://developer.world.org** and sign in.
-2. Create a new app.
-   - **Set it to `external` mode, not `mini-app`.** This is fixed at creation
-     and cannot be changed afterwards — getting it wrong means making a new app.
-   - If you are reusing an older app, click the **Enable World ID 4.0** banner
-     to complete RP registration, or v4 verification will not work.
-3. Copy three values:
-   ```
-   WORLD_APP_ID=app_...
-   WORLD_RP_ID=rp_...
-   WORLD_RP_SIGNING_KEY=<signing_key.private_key>
-   ```
-   The signing key is **shown exactly once**. If you lose it, rotate it.
-4. Leave `WORLD_ACTION=zowall-enroll` as it is. The action is defined in our
-   code, not in the portal — it is just a string that scopes the uniqueness
-   proof, and it is already the one the enrollment registry expects.
-5. `WORLD_ENVIRONMENT=staging` is correct for this event. `staging` and
-   `sandbox` are **different** environments with different verify endpoints,
-   and sandbox additionally needs the Sandbox World ID app from TestFlight or
-   Play. Mumbai mocks proofs, so staging needs no app.
+Create an app at https://developer.world.org.
 
-Check it with the server running:
+- Set it to **`external`** mode, not `mini-app`. This is fixed at creation and
+  cannot be changed, so getting it wrong means making a new app.
+- If you are reusing an older app, click **Enable World ID 4.0** to complete RP
+  registration, or v4 verification will not work.
+- The signing key is shown **once**. If you lose it, rotate it.
+
+Leave `WORLD_ACTION=zowall-enroll`. The action is a string defined in code, not
+a portal value, and it is the one the enrollment registry expects.
+
+`WORLD_ENVIRONMENT` is `staging` by default. `staging` and `sandbox` are
+different environments with different verify endpoints, and sandbox
+additionally needs the Sandbox World ID app from TestFlight or Play.
+
+Check it:
 
 ```bash
 curl -s localhost:3000/api/world/config | python3 -m json.tool
 ```
 
-`{"configured": true, ...}` means the three values are right. Anything in
-`missing` is still wrong. Then `?sign=1` to test the signature itself — but
-each call burns a single-use nonce, so do not loop it.
+`{"configured": true, ...}` means the three values are right; anything in
+`missing` is not. Add `?sign=1` to exercise the RP signature itself — but each
+call burns a single-use nonce, so do not loop it.
 
-### Three identities for the demo
-
-Still open, and it gates the World denied path. See
-**[WORLD.md](WORLD.md)** — it has what the prize page and docs actually say,
-three ways to get distinct identities in order of preference, and why the
-design survives whichever one works.
+Segregation of duties needs **three different enrolled people** for creator,
+receiver and approver. In non-production environments the identities behind
+proofs are not real, and `packages/world/README.md` explains why the design
+does not depend on how they are obtained.
 
 ---
 
-## 6. x402: associate USDC on the paying account
+## 6. x402
 
-`FACILITATOR_URL` and `X402_ASSET` are already filled with verified values:
-
-- facilitator `https://x402-hedera-production.up.railway.app`
-- Hedera testnet USDC `0.0.429274` (the official `hedera-dev/x402-hedera` repo
-  settles the `0.0.5449` ambiguity in the docs)
-
-One thing is not automatic: the **paying** account must associate the USDC token
-with a `TokenAssociateTransaction` first, or the call fails with
-`TOKEN_NOT_ASSOCIATED`. Fund that account from the Circle testnet faucet and
-associate the token before the paid-request demo.
-
-Whether the **receiving** account also needs association is not documented —
-**ask at the Hedera booth**, and check `X402_PAY_TO` can actually receive USDC
-before relying on it in the demo.
-
-Two more booth questions while you are there:
-
-- Which facilitator is actually reliable this weekend, and does the hosted one
-  above count as **"Official x402"** for the track?
-- Does "no human approving" forbid a pre-signed human mandate?
+`FACILITATOR_URL`, `X402_NETWORK`, `X402_ASSET` and `X402_PRICE` have working
+defaults for Hedera testnet. The **paying** account must associate the USDC
+token with a `TokenAssociateTransaction` first, or requests fail with
+`TOKEN_NOT_ASSOCIATED`.
 
 ---
 
-## When you are done
+## Check everything
 
 ```bash
 pnpm install
+pnpm test
 pnpm dev
 curl -s localhost:3000/api/health | python3 -m json.tool
 ```
 
-`"missing": []` means everything is wired. Anything listed is still empty.
+`"missing": []` means every variable is set. Then run the whole control against
+the chain:
 
-Never commit `.env.local` — it is gitignored, and `git check-ignore .env.local`
-confirms it.
+```bash
+set -a; source .env.local; set +a
+node packages/e2e/src/flow.ts --refund --cleanup
+```
+
+Never commit `.env.local`. `git check-ignore .env.local` confirms it is ignored.
