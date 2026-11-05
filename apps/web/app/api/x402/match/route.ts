@@ -12,9 +12,10 @@ import { decisions, purchaseOrders } from "@/lib/store";
  * bolted onto our own app.
  *
  * This path is machine-to-machine by construction. Every human check in this
- * system sits at PO creation and receipt time, never here, because the track
- * requires a paid request with no human approving and because a vendor asking
- * a question should not need our staff awake.
+ * system sits at PO creation and receipt time, never here: a vendor asking
+ * whether an invoice would be paid should not have to wait for someone to be
+ * awake, and a quote changes nothing, so there is nothing for a human to
+ * approve.
  */
 
 type MatchRequest = {
@@ -138,9 +139,9 @@ export async function POST(request: Request) {
 /**
  * Verify and settle the x402 payment through the facilitator.
  *
- * Which facilitator is live this weekend is a question for the Hedera booth -
- * the options are Official x402, Ax402 and Blocky402, or one we run. The URL
- * is configuration rather than a constant for exactly that reason.
+ * Several facilitators exist and which one is reachable varies, so the URL is
+ * configuration rather than a constant, and a self-hosted one works the same
+ * way.
  */
 async function settlePayment(
   paymentHeader: string,
@@ -179,8 +180,8 @@ async function settlePayment(
 
     if (data.success === false) return { ok: false, detail: data.error ?? "payment rejected" };
 
-    // The Hedera transaction id goes in the README and on screen: the track
-    // asks for a settled payment's id, and a judge should not have to ask.
+    // The settled Hedera transaction id is returned to the caller, so a paid
+    // request is auditable by the party that paid for it.
     return { ok: true, ...(data.transaction ? { receipt: data.transaction } : {}) };
   } catch (err) {
     return { ok: false, detail: `facilitator unreachable: ${String(err)}` };

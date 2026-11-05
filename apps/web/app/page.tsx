@@ -4,8 +4,8 @@ import { REASON_CODES, REASON_TEXT, SEVERITY } from "@zowall/gate-core";
 import { SiteNav } from "@/components/SiteNav";
 
 /**
- * One tagline, carried identically by the hero, the metadata, the README and
- * the demo narration. If this line changes, all four change together.
+ * One tagline, carried identically by the hero, the metadata and the README.
+ * If this line changes, all three change together.
  */
 const TAGLINE = "No PO, no pay.";
 const TAGLINE_TECH = "USDT on Whitechain, refusals on Hedera HCS.";

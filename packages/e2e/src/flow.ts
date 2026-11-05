@@ -18,8 +18,8 @@
  * The run sizes itself to whatever the vault holds and refunds the vendor's
  * USDT at the end, so it can be rehearsed repeatedly on one faucet drip.
  *
- * Every transaction hash is printed with an explorer link, because a judge who
- * cannot verify a claim assumes it is fake.
+ * Every transaction hash is printed with an explorer link, so each claim can be
+ * checked independently.
  *
  *   pnpm --filter @zowall/e2e start
  */

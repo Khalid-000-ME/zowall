@@ -1,8 +1,8 @@
 /**
  * Explorer links, keyed by chain id.
  *
- * A judge who cannot verify a claim assumes it is fake, so nothing in this app
- * renders a bare hash. Every address, transaction and topic links out.
+ * An unverifiable claim is worth nothing, so nothing in this app renders a
+ * bare hash. Every address, transaction and topic links out to an explorer.
  */
 
 export const WHITECHAIN_SEPOLIA = 1874;
@@ -34,7 +34,7 @@ export function hashscanTx(txId: string, network = "testnet"): string {
   return `https://hashscan.io/${network}/transaction/${encodeURIComponent(txId)}`;
 }
 
-/** Shorten for display. Never shorten a value a judge has to copy exactly. */
+/** Shorten for display only. The full value stays copyable and in the title. */
 export function truncate(value: string, lead = 6, tail = 4): string {
   if (value.length <= lead + tail + 2) return value;
   return `${value.slice(0, lead)}…${value.slice(-tail)}`;

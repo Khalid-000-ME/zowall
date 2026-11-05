@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-/// @dev Six decimals, like the real Whitechain Sepolia USDT. Tests only - the
-///      submission settles in the real token, because a self-minted one does
-///      not count for the Whitechain tracks.
+/// @dev Six decimals, like the real Whitechain Sepolia USDT. Tests only -
+///      deployments settle in the real token.
 contract MockUSDT {
     string public name = "Tether USD";
     string public symbol = "USDT";

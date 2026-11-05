@@ -52,8 +52,8 @@ export function Panel({
 }
 
 /**
- * A field in the three-pane view. `disagrees` is the whole point: a judge two
- * metres away has to see which number is wrong without reading the labels.
+ * A field in the three-pane view. `disagrees` is the whole point: the field
+ * that does not match has to be obvious without reading the labels.
  */
 export function Field({
   label,

@@ -3,7 +3,7 @@ import { SAMPLE_ATTACKS } from "@zowall/agent";
 import { AttackConsole } from "@/components/AttackConsole";
 
 /**
- * Where a judge gets to try.
+ * Where anyone can try to break it.
  *
  * The agent behind this box is deliberately gullible - no allowlist, no cap,
  * no injection detection - and saying so out loud is what disarms "you tuned

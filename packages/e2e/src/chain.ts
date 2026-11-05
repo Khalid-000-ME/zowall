@@ -15,11 +15,11 @@ export const whitechainSepolia = defineChain({
 
 /**
  * The Whitechain Sepolia RPC returns intermittent 503s ("no backend is
- * currently healthy") and occasional timeouts. Mid-demo that reads as our bug,
- * so every call retries with backoff rather than failing on the first blip.
+ * currently healthy") and occasional timeouts, which surface as application
+ * failures unless they are retried, so every call retries with backoff rather
+ * than failing on the first blip.
  *
- * EVM_RPC_URL overrides the default, which is what the free Ankr endpoint from
- * the prize page is for if the public one is unreliable on the day.
+ * EVM_RPC_URL overrides the default endpoint when the public one is unreliable.
  */
 export const transport = () =>
   http(process.env["EVM_RPC_URL"] ?? undefined, {

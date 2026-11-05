@@ -4,8 +4,8 @@
  * The chain is the source of truth for every decision; this holds only what a
  * UI needs to render without an indexer - PO metadata, enrollments, and the
  * decisions we have observed. It is deliberately not a database: anything that
- * matters is on Whitechain or on the Hedera topic, and a judge can check both
- * without us.
+ * matters is on Whitechain or on the Hedera topic, and both can be checked
+ * independently of this process.
  *
  * Restarting the server loses this and loses nothing that was load-bearing.
  */

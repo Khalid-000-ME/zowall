@@ -339,8 +339,8 @@ contract GateTest is Test {
     }
 
     function test_malformedSignatureRejectsRatherThanReverting() public {
-        // The demo depends on this: a judge's injected garbage must show as
-        // REJECTED on screen, not as a failed transaction.
+        // Injected garbage must come back as REJECTED, not as a failed
+        // transaction, or the reason for the refusal is lost.
         uint256 poId = _openPO();
         _receive(poId, 100);
 

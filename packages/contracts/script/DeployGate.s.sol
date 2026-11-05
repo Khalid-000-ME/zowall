@@ -7,9 +7,9 @@ import {IERC20} from "../src/interfaces/IERC20.sol";
 import {ZowallGate} from "../src/ZowallGate.sol";
 
 /**
- * Deploys the gate against the real Whitechain Sepolia USDT. A self-minted
- * token does not count for the Whitechain tracks, so the address is read from
- * the environment and sanity-checked rather than deployed here.
+ * Deploys the gate against the real Whitechain Sepolia USDT. The token address
+ * is read from the environment and sanity-checked rather than deployed here, so
+ * a deployment can never end up pointing at a stand-in token.
  *
  *   forge script script/DeployGate.s.sol \
  *     --rpc-url https://rpc.testnet.whitechain.io/ --private-key $PRIVATE_KEY \

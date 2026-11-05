@@ -9,12 +9,12 @@
  * same shape.
  *
  * The claim is not "our agent is smart". The claim is that the gate refuses
- * this agent's mistakes, including its operator's own, so we hand the judge
- * the most credulous agent we can write and let them aim it at the gate.
+ * this agent's mistakes, including its operator's own - so the agent here is
+ * the most credulous one that can reasonably be written.
  *
- * There is no language model in this file. A scripted intent parser is used so
- * the demo cannot fail on nondeterminism or a cold API, and so the attack is
- * reproducible by anyone reading the repo.
+ * There is no language model in this file. A scripted intent parser keeps the
+ * behaviour deterministic and makes the attack reproducible by anyone reading
+ * the repo.
  */
 
 import { usdt, type Address, type Bytes32, type Invoice } from "@zowall/gate-core";
@@ -124,7 +124,7 @@ export async function run(
   return { intent, narration: "Paying an invoice against a purchase order." };
 }
 
-/** Canned attacks, so a judge has something to click as well as something to type. */
+/** Canned attacks, so there is something to click as well as something to type. */
 export const SAMPLE_ATTACKS: ReadonlyArray<{ label: string; text: string }> = Object.freeze([
   {
     label: "Changed bank details",

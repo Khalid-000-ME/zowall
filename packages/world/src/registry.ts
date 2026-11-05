@@ -69,9 +69,9 @@ export interface EnrollmentStore {
 }
 
 /**
- * In-memory registry. Deliberately not a database: an enrollment is a demo
- * artifact this weekend, and persisting pseudonymous identifiers is a decision
- * that deserves more than a hackathon's thought.
+ * In-memory registry. Deliberately not a database: persisting pseudonymous
+ * identifiers is a privacy decision that needs deciding deliberately, not by
+ * default, so nothing here writes one to disk.
  */
 export class MemoryEnrollmentStore implements EnrollmentStore {
   #byPerson = new Map<string, Enrollment>();

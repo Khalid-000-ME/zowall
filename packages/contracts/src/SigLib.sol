@@ -5,10 +5,10 @@ pragma solidity 0.8.30;
  * @title SigLib
  * @notice Signature recovery that returns address(0) instead of reverting.
  *
- * This is deliberate and it is load-bearing for the demo. When a judge types a
- * prompt injection into the vendor-email box and the naive agent submits
- * nonsense, the gate must answer `REJECTED: BAD_SIGNATURE` on screen. A revert
- * would show a failed transaction and prove nothing.
+ * This is deliberate. When a prompt-injected agent submits nonsense, the gate
+ * must answer `REJECTED: BAD_SIGNATURE` as a result the caller can read and
+ * act on. A revert would surface as a failed transaction instead, losing the
+ * reason and making a refusal indistinguishable from an outage.
  */
 library SigLib {
     function tryRecover(bytes32 digest, bytes memory sig) internal pure returns (address) {

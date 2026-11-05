@@ -313,7 +313,7 @@ contract ZowallGate {
      * @notice Submit a vendor-signed invoice. Anyone may relay it; the
      *         signature is what authorises, not the sender.
      * @return outcome Paid, Held or Rejected. Never reverts on a bad document -
-     *         a refusal is a result, and the demo depends on it being visible.
+     *         a refusal is a result, and callers need to see which rule caught it.
      */
     function submitInvoice(Invoice calldata inv, bytes calldata vendorSig)
         external
