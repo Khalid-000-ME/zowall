@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
+import {Vm} from "forge-std/Vm.sol";
 import {MockUSDT} from "./MockUSDT.sol";
 import {IERC20} from "../src/interfaces/IERC20.sol";
 import {MatchEngine} from "../src/MatchEngine.sol";
@@ -358,6 +359,32 @@ contract GateTest is Test {
     }
 
     /* ---------------------------------------------------------- the digest */
+
+    function test_decisionEventCarriesItsOwnProof() public {
+        // The claim is that a stranger holding only this log can verify the
+        // Hedera entry. So the log has to carry the whole preimage, and
+        // keccak256 of it has to be the digest - no other inputs needed.
+        uint256 poId = _openPO();
+        _receive(poId, 100);
+
+        ZowallGate.Invoice memory inv = _invoice(poId, 100, UNIT, payee, 1);
+        vm.recordLogs();
+        gate.submitInvoice(inv, _signInvoice(VENDOR_PK, inv));
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        bool found;
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] != keccak256("Decision(uint256,bytes32,uint8,uint32,uint256,uint256,bytes32,bytes)")) continue;
+
+            (,,,,, bytes32 digest, bytes memory preimage) =
+                abi.decode(logs[i].data, (bytes32, uint8, uint32, uint256, uint256, bytes32, bytes));
+
+            assertEq(preimage.length, 14 * 32, "preimage is fourteen words");
+            assertEq(keccak256(preimage), digest, "digest is keccak of the preimage");
+            found = true;
+        }
+        assertTrue(found, "no Decision event found");
+    }
 
     function test_decisionDigestIsFourteenStaticWords() public {
         // Byte-for-byte the layout gate-core's encodeDecision produces, which

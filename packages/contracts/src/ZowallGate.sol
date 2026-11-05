@@ -141,8 +141,18 @@ contract ZowallGate {
         bytes32 journalDigest
     );
 
-    /// @notice Emitted for every decision, including the refusals. The
-    ///         journalDigest binds this log to the Hedera journal entry.
+    /**
+     * @notice Emitted for every decision, including the refusals.
+     *
+     * `preimage` is the exact 448 bytes the digest is taken over, so anyone
+     * holding only this log can verify the Hedera journal entry themselves:
+     * keccak256(preimage) must equal journalDigest, and journalDigest must
+     * equal the `dig` on the topic.
+     *
+     * Without it the digest covers fields the log does not carry - quantities,
+     * prices, person ids, nonce - and "you can replay our refusals without
+     * asking us" would quietly require asking us.
+     */
     event Decision(
         uint256 indexed poId,
         bytes32 invoiceHash,
@@ -150,7 +160,8 @@ contract ZowallGate {
         uint32 reasonMask,
         uint256 paid,
         uint256 holdId,
-        bytes32 journalDigest
+        bytes32 journalDigest,
+        bytes preimage
     );
 
     event HoldResolved(
@@ -340,15 +351,9 @@ contract ZowallGate {
             });
         }
 
-        emit Decision(
-            inv.poId,
-            inv.invoiceHash,
-            o,
-            mask,
-            paid,
-            holdId,
-            _digest(inv.poId, inv.invoiceHash, o, mask, p, inv.qty, inv.unitPrice, bytes32(0), inv.nonce)
-        );
+        bytes memory pre =
+            _preimage(inv.poId, inv.invoiceHash, o, mask, p, inv.qty, inv.unitPrice, bytes32(0), inv.nonce);
+        emit Decision(inv.poId, inv.invoiceHash, o, mask, paid, holdId, keccak256(pre), pre);
     }
 
     /**
@@ -441,15 +446,8 @@ contract ZowallGate {
             h.reasonMask = mask;
         }
 
-        emit Decision(
-            h.poId,
-            h.invoiceHash,
-            o,
-            mask,
-            paid,
-            holdId,
-            _digest(h.poId, h.invoiceHash, o, mask, p, h.qty, h.unitPrice, bytes32(0), h.nonce)
-        );
+        bytes memory pre = _preimage(h.poId, h.invoiceHash, o, mask, p, h.qty, h.unitPrice, bytes32(0), h.nonce);
+        emit Decision(h.poId, h.invoiceHash, o, mask, paid, holdId, keccak256(pre), pre);
     }
 
     /* ------------------------------------------------------------- views -- */
@@ -617,7 +615,7 @@ contract ZowallGate {
      *      recompute this from the event log and assert it equals the digest
      *      on the Hedera topic.
      */
-    function _digest(
+    function _preimage(
         uint256 poId,
         bytes32 invoiceHash,
         MatchEngine.Outcome outcome,
@@ -627,9 +625,8 @@ contract ZowallGate {
         uint128 invUnitPrice,
         bytes32 approverPersonId,
         uint256 nonce
-    ) private view returns (bytes32) {
-        return keccak256(
-            abi.encode(
+    ) private view returns (bytes memory) {
+        return (abi.encode(
                 block.chainid,
                 address(this),
                 poId,
@@ -644,7 +641,22 @@ contract ZowallGate {
                 p.receiverPersonId,
                 approverPersonId,
                 nonce
-            )
+            ));
+    }
+
+    function _digest(
+        uint256 poId,
+        bytes32 invoiceHash,
+        MatchEngine.Outcome outcome,
+        uint32 reasonMask,
+        PurchaseOrder storage p,
+        uint128 invQty,
+        uint128 invUnitPrice,
+        bytes32 approverPersonId,
+        uint256 nonce
+    ) private view returns (bytes32) {
+        return keccak256(
+            _preimage(poId, invoiceHash, outcome, reasonMask, p, invQty, invUnitPrice, approverPersonId, nonce)
         );
     }
 }

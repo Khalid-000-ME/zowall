@@ -38,34 +38,46 @@ async function sdk(): Promise<HashgraphModule> {
 }
 
 /**
- * Parse a Hedera private key without caring which curve it is.
+ * Parse a Hedera private key, choosing the parser by the key's SHAPE rather
+ * than by trying each in turn.
  *
- * The developer portal hands out ECDSA keys in DER form (starting `303`),
- * while plenty of docs and examples assume ED25519 (`302e`). Calling
- * `fromStringED25519` on a portal key throws BadKeyError, which looks like a
- * credential problem and is really a parser problem - so accept DER for
- * either curve and fall back to the raw-hex forms.
+ * Trying them in sequence does not work: given plain 32-byte hex,
+ * `fromStringDer` succeeds but interprets it as the wrong curve, so you get a
+ * well-formed key with the wrong public half and every transaction fails
+ * precheck with INVALID_SIGNATURE - which looks like a permissions problem and
+ * is really a parsing problem.
+ *
+ * So:
+ *   - DER-encoded (hex starting 302 or 303) -> fromStringDer, which reads the
+ *     curve out of the encoding. This is what portal.hedera.com shows.
+ *   - raw 32-byte hex -> the curve is NOT recoverable from the bytes. Default
+ *     to ECDSA, because that is what the portal issues, and let
+ *     HEDERA_KEY_TYPE=ed25519 override it.
  */
 async function parseKey(value: string): Promise<import("@hashgraph/sdk").PrivateKey> {
   const { PrivateKey } = await sdk();
-  const raw = value.trim();
+  const raw = value.trim().replace(/^0x/, "");
 
-  for (const parse of [
-    () => PrivateKey.fromStringDer(raw),
-    () => PrivateKey.fromStringECDSA(raw),
-    () => PrivateKey.fromStringED25519(raw),
-  ]) {
-    try {
-      return parse();
-    } catch {
-      // try the next form
-    }
+  if (!/^[0-9a-fA-F]+$/.test(raw)) {
+    throw new Error("Hedera private key is not hex. Paste it exactly as the portal shows it.");
   }
 
-  throw new Error(
-    "could not read the Hedera private key. Paste the DER Encoded Private Key " +
-      "from portal.hedera.com exactly as shown (it starts with 303 for ECDSA).",
-  );
+  // DER keys carry their curve in the encoding, so they are unambiguous.
+  if (raw.length > 64 && (raw.startsWith("302") || raw.startsWith("303"))) {
+    return PrivateKey.fromStringDer(raw);
+  }
+
+  if (raw.length !== 64) {
+    throw new Error(
+      `Hedera private key is ${raw.length} hex chars - expected 64 for a raw key, ` +
+        "or a longer DER string starting 302/303.",
+    );
+  }
+
+  // 32 raw bytes are valid on either curve, so the bytes cannot tell us which.
+  return process.env["HEDERA_KEY_TYPE"] === "ed25519"
+    ? PrivateKey.fromStringED25519(raw)
+    : PrivateKey.fromStringECDSA(raw);
 }
 
 /**
