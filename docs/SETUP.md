@@ -1,8 +1,12 @@
 # Credential setup
 
-**Three values left**, all from the World Developer Portal. Everything else is
-done: the gate is deployed and verified, the vault is funded, the Hedera
-account is connected and the journal topic is live.
+**Every credential is filled in.** The gate is deployed and verified, the vault
+is funded, the Hedera account and journal topic are live, and the World portal
+values are set.
+
+What is left is not credentials — see [WORLD.md](WORLD.md) for the two open
+items: getting three distinct mocked identities, and whether the $5,000 track
+needs `@worldcoin/agentkit`.
 
 Every URL and constraint below was checked live on 2026-11-05. Do them in this
 order — step 2 needs step 1, and step 4 needs step 3.
@@ -15,7 +19,7 @@ Your two EVM keys are already generated and in `.env.local`:
 | `0xdCa82154FA9f7a95277729e9a6861f4E023ab997` | Attestor (signs role attestations) | no, it only signs |
 | `0xa957e1D8ce0498A73b5AFC1b2f8CA0cB6678C127` | Demo vendor (e2e runner) | no |
 
-**Steps 1-4 and 6 are done.** Only step 5 (World) is left.
+**All steps are done.** Kept below for reference and for a rebuild.
 
 | | |
 |---|---|
@@ -183,7 +187,7 @@ Put the topic id in the README, and open the HashScan link to confirm it exists.
 
 ---
 
-## 5. World Developer Portal → `WORLD_APP_ID`, `WORLD_RP_ID`, `WORLD_RP_SIGNING_KEY`
+## 5. World Developer Portal → `WORLD_APP_ID`, `WORLD_RP_ID`, `WORLD_RP_SIGNING_KEY`  ✅ DONE
 
 1. Open **https://developer.world.org** and sign in.
 2. Create a new app.
@@ -201,8 +205,10 @@ Put the topic id in the README, and open the HashScan link to confirm it exists.
 4. Leave `WORLD_ACTION=zowall-enroll` as it is. The action is defined in our
    code, not in the portal — it is just a string that scopes the uniqueness
    proof, and it is already the one the enrollment registry expects.
-5. `WORLD_ENVIRONMENT` is already `staging`, which is what the simulator needs.
-   Switch it to `production` only when testing with a real device.
+5. `WORLD_ENVIRONMENT=staging` is correct for this event. `staging` and
+   `sandbox` are **different** environments with different verify endpoints,
+   and sandbox additionally needs the Sandbox World ID app from TestFlight or
+   Play. Mumbai mocks proofs, so staging needs no app.
 
 Check it with the server running:
 
@@ -216,10 +222,10 @@ each call burns a single-use nonce, so do not loop it.
 
 ### Three identities for the demo
 
-Segregation of duties needs **three different humans** — creator, receiver,
-approver. At Mumbai, proofs use **mocked identities**, so ask at the World booth
-how to get three distinct mocked identities in the simulator. Without three,
-you cannot demonstrate the denied path, which is what the prize is for.
+Still open, and it gates the World denied path. See
+**[WORLD.md](WORLD.md)** — it has what the prize page and docs actually say,
+three ways to get distinct identities in order of preference, and why the
+design survives whichever one works.
 
 ---
 
