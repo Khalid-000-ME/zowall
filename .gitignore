@@ -27,3 +27,7 @@ lib/
 # local scratch
 scratch/
 tmp/
+
+# internal strategy docs - keep local, never publish
+PRD-no-po-no-pay.md
+CONTEXT-research-insights.md
