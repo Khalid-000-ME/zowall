@@ -28,7 +28,6 @@ import {
   createPublicClient,
   createWalletClient,
   encodeAbiParameters,
-  http,
   keccak256,
   toHex,
   decodeEventLog,
@@ -38,7 +37,7 @@ import { REASON_TEXT, codesOf, formatUsdt, type Bytes32 } from "@zowall/gate-cor
 import { ROLE_CODE, type Role } from "@zowall/world";
 
 import { ERC20_ABI, GATE_ABI } from "./abi.ts";
-import { explorerAddress, explorerTx, whitechainSepolia } from "./chain.ts";
+import { explorerAddress, explorerTx, transport, whitechainSepolia } from "./chain.ts";
 
 const OUTCOME = ["PAID", "HELD", "REJECTED"] as const;
 
@@ -68,11 +67,11 @@ const RUN = Date.now();
 const ALICE = `0x${"a1".repeat(32)}` as Bytes32; // raises the PO
 const BOB = `0x${"b2".repeat(32)}` as Bytes32; // signs for the delivery
 
-const publicClient = createPublicClient({ chain: whitechainSepolia, transport: http() });
+const publicClient = createPublicClient({ chain: whitechainSepolia, transport: transport() });
 const wallet = createWalletClient({
   account: buyer,
   chain: whitechainSepolia,
-  transport: http(),
+  transport: transport(),
 });
 
 const domain = {
@@ -515,7 +514,7 @@ async function refund() {
   const vendorWallet = createWalletClient({
     account: vendor,
     chain: whitechainSepolia,
-    transport: http(),
+    transport: transport(),
   });
 
   const hash = await vendorWallet.writeContract({
