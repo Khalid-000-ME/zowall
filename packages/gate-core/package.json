@@ -1,0 +1,15 @@
+{
+  "name": "@zowall/gate-core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pure three-way match engine. No chain, no network, no dependencies.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}
