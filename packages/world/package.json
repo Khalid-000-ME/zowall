@@ -1,0 +1,19 @@
+{
+  "name": "@zowall/world",
+  "version": "0.1.0",
+  "private": true,
+  "description": "World ID enrollment registry, session freshness and EIP-712 role attestations.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@zowall/gate-core": "workspace:*",
+    "viem": "2.21.55"
+  }
+}

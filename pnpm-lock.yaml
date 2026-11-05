@@ -31,6 +31,15 @@ importers:
         specifier: 2.21.55
         version: 2.21.55(typescript@5.9.2)
 
+  packages/world:
+    dependencies:
+      '@zowall/gate-core':
+        specifier: workspace:*
+        version: link:../gate-core
+      viem:
+        specifier: 2.21.55
+        version: 2.21.55(typescript@5.9.2)
+
 packages:
 
   '@adraffy/ens-normalize@1.11.1':
@@ -2257,8 +2266,8 @@ snapshots:
   ox@0.1.2(typescript@5.9.2):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
-      '@noble/curves': 1.7.0
-      '@noble/hashes': 1.6.1
+      '@noble/curves': 1.9.7
+      '@noble/hashes': 1.8.0
       '@scure/bip32': 1.6.0
       '@scure/bip39': 1.5.0
       abitype: 1.0.7(typescript@5.9.2)
@@ -2605,8 +2614,8 @@ snapshots:
 
   webauthn-p256@0.0.10:
     dependencies:
-      '@noble/curves': 1.7.0
-      '@noble/hashes': 1.6.1
+      '@noble/curves': 1.9.7
+      '@noble/hashes': 1.8.0
 
   whatwg-fetch@3.6.20: {}
 
