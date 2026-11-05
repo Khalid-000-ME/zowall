@@ -4,19 +4,14 @@
 
 Three-way invoice match for agents that hold a wallet.
 
-> **Note:** this is the developer README for the build in progress. The
-> submission README - deployed addresses, settled transaction ids, the
-> track-requirement table, the demo video - is written once there is something
-> deployed to point at.
-
 An agent with a wallet pays whatever its context tells it to. Every existing
 control checks one dimension: a spend cap checks the amount, an allowlist
 checks the counterparty, a reputation screen checks history, an approval group
 checks who signed. None of them check whether the thing was ever ordered and
 received.
 
-That check has a name in every ERP on earth - the three-way match - and no
-agent has one.
+That check has a name in every ERP on earth - the three-way match. Auditors
+test for it. Agents do not have one.
 
 **The load-bearing sentence:** the language model never decides whether money
 moves. It parses documents and proposes. A deterministic contract disposes.
@@ -69,8 +64,7 @@ node packages/e2e/src/flow.ts --refund --cleanup
 ```
 
 Amounts are small because the testnet treasury is 5 USDT. The control is
-identical at any scale, and the runner sizes each order to what the vault
-actually holds.
+identical at any scale, and the runner sizes each order to what the vault holds.
 
 ## Layout
 
