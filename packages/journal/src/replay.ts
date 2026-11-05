@@ -51,9 +51,16 @@ export type EvmDecision = {
   blockNumber: number;
 };
 
-/** Looks up what the chain logged for an invoice hash. */
+/**
+ * Looks up what the chain logged for one decision.
+ *
+ * Keyed on the transaction, not the invoice hash: the same invoice can be
+ * decided more than once - submit it twice and you get a PAID and a
+ * DUPLICATE_INVOICE over identical invoice bytes - so an invoice hash does not
+ * identify a decision. The journal entry carries its own `evm.tx`, which does.
+ */
 export type EvmSource = (
-  invoiceHash: string,
+  ref: { invoiceHash: string; txHash: string },
 ) => Promise<EvmDecision | null> | EvmDecision | null;
 
 export type ReplayFinding =
@@ -135,7 +142,7 @@ async function checkDecision(
     return out;
   }
 
-  const chain = await options.evmSource(entry.inv);
+  const chain = await options.evmSource({ invoiceHash: entry.inv, txHash: entry.evm.tx });
   if (!chain) {
     out.push({ kind: "evm_missing", seq, invoiceHash: entry.inv });
     return out;

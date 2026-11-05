@@ -145,6 +145,68 @@ test("restating the quantities in the journal is caught", async () => {
   assert.ok(report.findings.some((f) => f.kind === "field_disagrees" && f.field === "invoicedQty"));
 });
 
+test("one invoice decided twice gives two distinct entries, not one", async () => {
+  // Submit an invoice, get PAID. Submit the identical bytes again, get
+  // DUPLICATE_INVOICE. Same invoice hash, two different decisions - so a
+  // lookup keyed on the invoice hash loses one of them.
+  const paidTx = "0xaaa1230000000000000000000000000000000000000000000000000000000000";
+  const dupTx = "0xbbb4560000000000000000000000000000000000000000000000000000000000";
+
+  const paid: EvmDecision = { ...chainDecision, outcome: "PAID", reasonMask: 0, txHash: paidTx };
+  const dup: EvmDecision = {
+    ...chainDecision,
+    outcome: "REJECTED",
+    reasonMask: 1 << 5, // DUPLICATE_INVOICE
+    txHash: dupTx,
+  };
+
+  const digestFor = (d: EvmDecision) =>
+    hash(
+      encodeDecision({
+        chainId: BigInt(CHAIN),
+        gate: GATE,
+        poId: d.poId,
+        invoiceHash: d.invoiceHash,
+        outcome: d.outcome,
+        reasonMask: d.reasonMask,
+        invQty: d.invQty,
+        recvQty: d.recvQty,
+        invUnitPrice: d.invUnitPrice,
+        poUnitPrice: d.poUnitPrice,
+        creatorPersonId: d.creatorPersonId,
+        receiverPersonId: d.receiverPersonId,
+        approverPersonId: d.approverPersonId,
+        nonce: d.nonce,
+      }),
+    );
+
+  const entries = [
+    entry({ outcome: "PAID", codes: [], evm: { chain: CHAIN, tx: paidTx, block: 1 }, dig: digestFor(paid) }),
+    entry({
+      outcome: "REJECTED",
+      codes: ["DUPLICATE_INVOICE"],
+      evm: { chain: CHAIN, tx: dupTx, block: 2 },
+      dig: digestFor(dup),
+    }),
+  ];
+
+  const byTx = new Map([
+    [paidTx, { ...paid, journalDigest: digestFor(paid) }],
+    [dupTx, { ...dup, journalDigest: digestFor(dup) }],
+  ]);
+
+  const report = await replay("0.0.999", {
+    keccak256: hash,
+    chainId: CHAIN,
+    gateAddress: GATE,
+    fetchImpl: fakeMirror(entries),
+    evmSource: (ref) => byTx.get(ref.txHash) ?? null,
+  });
+
+  assert.equal(report.decisions, 2);
+  assert.equal(report.ok, true, JSON.stringify(report.findings));
+});
+
 test("an entry with no decision on chain at all is caught", async () => {
   const report = await replay("0.0.999", options([entry()], null));
   assert.equal(report.ok, false);

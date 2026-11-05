@@ -15,7 +15,7 @@ import { decodeMirrorMessage } from "./entry.ts";
 import { formatReport, replay } from "./replay.ts";
 
 const USAGE = `usage:
-  journal replay <topicId> [--chain <id>] [--gate <address>] [--mirror <url>]
+  journal replay <topicId> [--gate <address>] [--rpc <url>] [--chain <id>] [--mirror <url>]
   journal tail <topicId> [--limit <n>]
   journal create-topic
 `;
@@ -46,15 +46,29 @@ async function main(): Promise<number> {
       return 1;
     }
 
+    const gateAddress = (flag(rest, "gate") ?? process.env["GATE_ADDRESS"] ?? "") as
+      | `0x${string}`
+      | "";
+    const rpcUrl =
+      flag(rest, "rpc") ?? process.env["EVM_RPC_URL"] ?? "https://rpc.testnet.whitechain.io";
+
+    // With a gate address the replay recomputes each digest from the chain's
+    // own logs. Without one it can only check the journal against itself, and
+    // every line says so.
+    let evmSource;
+    if (gateAddress) {
+      const { evmSourceFromChain } = await import("./evm.ts");
+      const loaded = await evmSourceFromChain({ rpcUrl, gateAddress });
+      process.stdout.write(`loaded ${loaded.count} decisions from ${gateAddress}\n\n`);
+      evmSource = loaded.source;
+    }
+
     const report = await replay(topicId, {
       keccak256: await keccak(),
       chainId: Number(flag(rest, "chain") ?? process.env["EVM_CHAIN_ID"] ?? 1874),
-      gateAddress: (flag(rest, "gate") ??
-        process.env["GATE_ADDRESS"] ??
-        "0x0000000000000000000000000000000000000000") as `0x${string}`,
+      gateAddress: (gateAddress || "0x0000000000000000000000000000000000000000") as `0x${string}`,
       ...(flag(rest, "mirror") ? { mirrorUrl: flag(rest, "mirror") as string } : {}),
-      // An EVM source is wired in by the app; without one this reports the
-      // journal's own consistency and says so on every line.
+      ...(evmSource ? { evmSource } : {}),
     });
 
     process.stdout.write(`${formatReport(report)}\n`);

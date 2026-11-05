@@ -142,6 +142,7 @@ export const GATE_ABI = [
       { name: "paid", type: "uint256", indexed: false },
       { name: "holdId", type: "uint256", indexed: false },
       { name: "journalDigest", type: "bytes32", indexed: false },
+      { name: "preimage", type: "bytes", indexed: false },
     ],
   },
   {
@@ -163,4 +164,5 @@ export const GATE_ABI = [
 export const ERC20_ABI = [
   { type: "function", name: "balanceOf", stateMutability: "view", inputs: [{ type: "address" }], outputs: [{ type: "uint256" }] },
   { type: "function", name: "decimals", stateMutability: "view", inputs: [], outputs: [{ type: "uint8" }] },
+  { type: "function", name: "transfer", stateMutability: "nonpayable", inputs: [{ type: "address" }, { type: "uint256" }], outputs: [{ type: "bool" }] },
 ] as const;

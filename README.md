@@ -26,7 +26,8 @@ moves. It parses documents and proposes. A deterministic contract disposes.
 | | |
 |---|---|
 | Network | Whitechain Sepolia (chain id **1874**) |
-| `ZowallGate` | [`0x2ced329ea70c1740a707e620668575e79ec1f84d`](https://explorer.testnet.whitechain.io/address/0x2ced329ea70c1740a707e620668575e79ec1f84d) — **verified** |
+| `ZowallGate` | [`0x1fcb96e5e1a092bab2376517036113beb3cc9c5a`](https://explorer.testnet.whitechain.io/address/0x1fcb96e5e1a092bab2376517036113beb3cc9c5a) — **verified** |
+| Hedera journal topic | [`0.0.11326973`](https://hashscan.io/testnet/topic/0.0.11326973) |
 | USDT (6 dp) | [`0xcedfB56113143d55b2358b8CFbB0dEB5Ad2f55a7`](https://explorer.testnet.whitechain.io/address/0xcedfB56113143d55b2358b8CFbB0dEB5Ad2f55a7) |
 | Attestor | `0xdCa82154FA9f7a95277729e9a6861f4E023ab997` |
 
@@ -35,10 +36,30 @@ transaction anyone can open:
 
 | Outcome | Transaction |
 |---|---|
-| **PAID** 2.00 USDT | [`0x46b49fef…`](https://explorer.testnet.whitechain.io/tx/0x46b49fef136d637c5da7adf0cd3659249409ab3cac838e7e034110f9daa74525) |
-| `REJECTED NO_PO` | [`0x86c28af0…`](https://explorer.testnet.whitechain.io/tx/0x86c28af012fa3ea3a81ca4844a60fd1178d52d87d8fea8c5b8e0f6bfe0917abe) |
-| `REJECTED PAYEE_MISMATCH` | [`0x253b04c8…`](https://explorer.testnet.whitechain.io/tx/0x253b04c84bcb150460d3c0f13e94d167b9219c7ff3f1b68904aac02ccb4cc913) |
-| `REJECTED DUPLICATE_INVOICE` | [`0x508e6480…`](https://explorer.testnet.whitechain.io/tx/0x508e6480e160be01d984386564c6f6a621bda3392f8aafb4bbff52b6618d9133) |
+| **PAID** 2.00 USDT | [`0x6d96e1a9…`](https://explorer.testnet.whitechain.io/tx/0x6d96e1a9be72822e4a9bea7d23ce1144de8f3b1e585fe92428fea7c5e6f26556) |
+| `REJECTED NO_PO` | [`0x995a0979…`](https://explorer.testnet.whitechain.io/tx/0x995a097955c6145ee18586f71ebecef11559082e106b39f04880b4c68594b231) |
+| `REJECTED PAYEE_MISMATCH` | [`0x85078ec5…`](https://explorer.testnet.whitechain.io/tx/0x85078ec5f00f6b4fca2a290cf08fbe64b6803556089ad6e0546de941e660ab44) |
+| `REJECTED DUPLICATE_INVOICE` | [`0xa785ef6d…`](https://explorer.testnet.whitechain.io/tx/0xa785ef6d3f8dca2b8650d07fc6031f4bdea499a1bacd76a1112538967f337243) |
+
+All four are on the Hedera topic, and the replay recomputes every digest from
+the chain's own logs:
+
+```
+$ node packages/journal/src/cli.ts replay 0.0.11326973
+
+  OK    #1  REJECTED po#0 NO_PO · digest recomputed and matched
+  OK    #2  REJECTED po#1 PAYEE_MISMATCH · digest recomputed and matched
+  OK    #3  PAID po#1 clean · digest recomputed and matched
+  OK    #4  REJECTED po#1 DUPLICATE_INVOICE · digest recomputed and matched
+
+OK - journal and chain agree
+```
+
+Verify any single decision from its log alone, with nothing supplied by us:
+
+```bash
+node packages/e2e/src/verify-decision.ts 0x6d96e1a9be72822e4a9bea7d23ce1144de8f3b1e585fe92428fea7c5e6f26556
+```
 
 Reproduce all four:
 
@@ -95,10 +116,17 @@ append, and no admin key, so it is immutable and undeletable. Anyone can read
 it from a public mirror node and run the replay without asking us.
 
 The two are bound by a content digest that `gate-core` computes and both sides
-carry, so the claim is checkable by a stranger rather than asserted:
+carry.
+
+The `Decision` event carries the **448-byte preimage** the digest is taken
+over, not just the digest. That is what makes the claim real rather than nearly
+real: without it the digest covers quantities, prices, person ids and a nonce
+that the log does not contain, so "replay our refusals without asking us" would
+quietly require asking us. With it, `keccak256(preimage)` is the digest and the
+digest is what the journal carries.
 
 ```bash
-node packages/journal/src/cli.ts replay <topicId> --chain 1874 --gate 0x...
+node packages/journal/src/cli.ts replay <topicId> --gate 0x... --rpc <url>
 ```
 
 ## The rules
