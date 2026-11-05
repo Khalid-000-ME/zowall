@@ -51,6 +51,27 @@ The minimum sufficient assurance for "a different human approved this" is a
 per-action pseudonym, which is exactly what a nullifier is. Asking for anything
 more would collect personal data the control does not need in order to work.
 
+## Verified against the installed SDK
+
+Checked against `@worldcoin/idkit-core@4.6.0` and `@worldcoin/idkit@4.6.0` in
+this repo rather than taken from docs:
+
+| Surface | Status |
+|---|---|
+| `createSession(config)` | present |
+| `proveSession(session_id, config)` | present |
+| `IDKitSessionWidget` | present in `@worldcoin/idkit` |
+| session result shape | carries `session_id`, no `action` — this is what makes it repeatable |
+| `environment` | `"production" \| "staging" \| "sandbox"` |
+
+So session proofs are real and the preferred mode works. The per-role fallback
+is insurance, not the plan.
+
+**`staging` and `sandbox` are different environments**, with different verify
+endpoints (`staging.world.org/verify` vs `sandbox.world.org/verify`). Sandbox
+needs the Sandbox World ID app installed from TestFlight or Play; staging does
+not. At Mumbai proofs are mocked, so staging is the one to use.
+
 ## Things that cost debugging time, recorded so they cost it once
 
 - Forward the `IDKitResult` **as-is**. Wrapping it returns

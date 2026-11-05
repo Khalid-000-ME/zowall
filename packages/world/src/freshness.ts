@@ -15,9 +15,13 @@
  * repeatability: one proof per human per role for the whole event. Survivable
  * with three or four test identities, which is what a demo has.
  *
- * Session proofs are named in swish's own comments but were never implemented
- * there, so this is the one genuinely new World surface in the build. Confirm
- * createSession / proveSession and IDKitSessionWidget before relying on them.
+ * Verified against the installed @worldcoin/idkit-core 4.6.0, not assumed:
+ *   createSession(config)                      -> IDKitBuilder
+ *   proveSession(session_id, config)           -> IDKitBuilder
+ *   IDKitSessionWidget                         (from @worldcoin/idkit)
+ * and a session result carries `session_id` with no `action`, which is the
+ * property that makes it repeatable. So the preferred mode is available and
+ * the fallback below is insurance rather than the plan.
  */
 
 import type { Role } from "./roles.ts";
