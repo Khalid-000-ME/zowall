@@ -18,5 +18,6 @@ runs = 512
 [rpc_endpoints]
 whitechain_sepolia = "https://rpc.testnet.whitechain.io"
 
-[etherscan]
-whitechain_sepolia = { key = "", url = "https://explorer.testnet.whitechain.io/api/", chain = 1874 }
+# No [etherscan] block on purpose. Foundry validates chain ids there against
+# its own list and fails with "Chain 1874 not supported", so verification
+# passes --verifier blockscout and --verifier-url on the command line instead.

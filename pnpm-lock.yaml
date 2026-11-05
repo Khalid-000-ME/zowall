@@ -72,6 +72,21 @@ importers:
 
   packages/contracts: {}
 
+  packages/e2e:
+    dependencies:
+      '@zowall/gate-core':
+        specifier: workspace:*
+        version: link:../gate-core
+      '@zowall/sdk':
+        specifier: workspace:*
+        version: link:../sdk
+      '@zowall/world':
+        specifier: workspace:*
+        version: link:../world
+      viem:
+        specifier: 2.21.55
+        version: 2.21.55(typescript@5.9.2)
+
   packages/gate-core: {}
 
   packages/journal:

@@ -177,6 +177,8 @@ contract ZowallGate {
     error AttestationPOMismatch(uint256 expected, uint256 got);
     /// @dev Segregation of duties. The whole point of the control.
     error SodViolation(bytes32 personId);
+    /// @dev Only the human who raised a purchase order may cancel it.
+    error NotPOCreator(bytes32 personId);
     error HoldNotFound(uint256 holdId);
     error HoldAlreadyResolved(uint256 holdId);
     error ExceedsEncumbrance(uint256 requested, uint256 remaining);
@@ -243,10 +245,21 @@ contract ZowallGate {
         );
     }
 
-    /// @notice Cancel a PO and release whatever is still reserved.
-    function cancelPO(uint256 poId) external {
+    /**
+     * @notice Cancel a PO and release whatever is still reserved.
+     *
+     * Requires a fresh Creator attestation from the same human who raised it.
+     * Without that check anyone could cancel anyone's purchase order: the
+     * money would stay in the vault, so it is not theft, but a vendor could no
+     * longer rely on a reservation still being there when they ship - which is
+     * the one thing this contract exists to promise them.
+     */
+    function cancelPO(uint256 poId, Attestation calldata a) external {
         PurchaseOrder storage p = _pos[poId];
         if (p.status != MatchEngine.POStatus.Open) revert PONotOpen(poId);
+
+        _useAttestation(a, Role.Creator, poId);
+        if (a.personId != p.creatorPersonId) revert NotPOCreator(a.personId);
 
         uint256 released = p.encumbered;
         p.encumbered = 0;

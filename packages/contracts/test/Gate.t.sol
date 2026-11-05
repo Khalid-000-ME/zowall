@@ -276,9 +276,32 @@ contract GateTest is Test {
     function test_cancelReleasesTheReservation() public {
         uint256 poId = _openPO();
         assertEq(gate.totalEncumbered(), ENCUMBERED);
-        gate.cancelPO(poId);
+        gate.cancelPO(poId, _attest(ALICE, ZowallGate.Role.Creator, poId));
         assertEq(gate.totalEncumbered(), 0);
         assertEq(gate.unencumberedBalance(), 10_000_000_000);
+    }
+
+    function test_onlyTheCreatorCanCancel() public {
+        // Otherwise anyone could drop a vendor's reservation out from under
+        // them, and "the funds are reserved before you ship" stops being true.
+        uint256 poId = _openPO();
+
+        ZowallGate.Attestation memory bob = _attest(BOB, ZowallGate.Role.Creator, poId);
+        vm.expectRevert(abi.encodeWithSelector(ZowallGate.NotPOCreator.selector, BOB));
+        gate.cancelPO(poId, bob);
+
+        assertEq(gate.totalEncumbered(), ENCUMBERED, "reservation survived");
+    }
+
+    function test_cancelNeedsARealAttestation() public {
+        uint256 poId = _openPO();
+
+        ZowallGate.Attestation memory forged = _attest(ALICE, ZowallGate.Role.Creator, poId);
+        forged.sig = _sign(ATTACKER_PK, _attestStructHash(forged));
+
+        vm.expectRevert(ZowallGate.BadAttestation.selector);
+        gate.cancelPO(poId, forged);
+        assertEq(gate.totalEncumbered(), ENCUMBERED);
     }
 
     function test_receiverCannotBeThePOCreator() public {
