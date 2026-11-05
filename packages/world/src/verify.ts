@@ -1,6 +1,6 @@
 /**
- * Server-side World ID verification. Ported from swish (ETHGlobal Tokyo),
- * where every comment below was paid for in debugging time.
+ * Server-side World ID verification, ported from `swish`, where every comment
+ * below was paid for in debugging time.
  *
  * This runs in a route handler and nowhere else. The browser never receives
  * anything it could forge a verified result from - that is World's hard

@@ -6,7 +6,8 @@ import { NextResponse } from "next/server";
  * World ID enforces RP signatures for 4.0 requests and the signing key can
  * never reach a browser.
  *
- * Ported from swish, where the comments below were paid for in debugging time.
+ * Ported from `swish`, an earlier project, where the comments below were paid
+ * for in debugging time.
  */
 export async function GET(request: Request) {
   // A signature carries a single-use nonce, so signing is opt-in: the UI

@@ -2,8 +2,8 @@
 
 World ID: who the three humans are, and whether one of them is here right now.
 
-Ported from `swish` (ETHGlobal Tokyo), with the ed25519 + `sui::ed25519_verify`
-attestation swapped for **EIP-712 + `ecrecover`**. The pattern is unchanged and
+Ported from `swish`, an earlier project, with its ed25519 +
+`sui::ed25519_verify` attestation swapped for **EIP-712 + `ecrecover`**. The pattern is unchanged and
 it is the part that matters: the backend signs a canonical message only after a
 proof verifies, and the chain re-derives that message independently.
 
