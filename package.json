@@ -1,0 +1,21 @@
+{
+  "name": "zowall",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Three-way invoice match gate for autonomous agents. The agent proposes, the ledger disposes.",
+  "license": "MIT",
+  "author": "Khalid-000-ME <imtheuser3@gmail.com>",
+  "packageManager": "pnpm@10.26.1",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @zowall/web dev",
+    "build": "pnpm -r --filter=!@zowall/contracts build",
+    "test": "pnpm -r test",
+    "test:core": "pnpm --filter @zowall/gate-core test",
+    "test:contracts": "forge test --root packages/contracts",
+    "typecheck": "pnpm -r typecheck",
+    "journal": "pnpm --filter @zowall/journal start"
+  }
+}
