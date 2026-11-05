@@ -21,6 +21,36 @@ agent has one.
 **The load-bearing sentence:** the language model never decides whether money
 moves. It parses documents and proposes. A deterministic contract disposes.
 
+## Deployed
+
+| | |
+|---|---|
+| Network | Whitechain Sepolia (chain id **1874**) |
+| `ZowallGate` | [`0x2ced329ea70c1740a707e620668575e79ec1f84d`](https://explorer.testnet.whitechain.io/address/0x2ced329ea70c1740a707e620668575e79ec1f84d) — **verified** |
+| USDT (6 dp) | [`0xcedfB56113143d55b2358b8CFbB0dEB5Ad2f55a7`](https://explorer.testnet.whitechain.io/address/0xcedfB56113143d55b2358b8CFbB0dEB5Ad2f55a7) |
+| Attestor | `0xdCa82154FA9f7a95277729e9a6861f4E023ab997` |
+
+A real USDT payment settled through the main flow, and three refusals, each a
+transaction anyone can open:
+
+| Outcome | Transaction |
+|---|---|
+| **PAID** 2.00 USDT | [`0x46b49fef…`](https://explorer.testnet.whitechain.io/tx/0x46b49fef136d637c5da7adf0cd3659249409ab3cac838e7e034110f9daa74525) |
+| `REJECTED NO_PO` | [`0x86c28af0…`](https://explorer.testnet.whitechain.io/tx/0x86c28af012fa3ea3a81ca4844a60fd1178d52d87d8fea8c5b8e0f6bfe0917abe) |
+| `REJECTED PAYEE_MISMATCH` | [`0x253b04c8…`](https://explorer.testnet.whitechain.io/tx/0x253b04c84bcb150460d3c0f13e94d167b9219c7ff3f1b68904aac02ccb4cc913) |
+| `REJECTED DUPLICATE_INVOICE` | [`0x508e6480…`](https://explorer.testnet.whitechain.io/tx/0x508e6480e160be01d984386564c6f6a621bda3392f8aafb4bbff52b6618d9133) |
+
+Reproduce all four:
+
+```bash
+set -a; source .env.local; set +a
+node packages/e2e/src/flow.ts --refund --cleanup
+```
+
+Amounts are small because the testnet treasury is 5 USDT. The control is
+identical at any scale, and the runner sizes each order to what the vault
+actually holds.
+
 ## Layout
 
 ```
