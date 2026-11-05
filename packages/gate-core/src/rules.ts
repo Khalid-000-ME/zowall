@@ -99,16 +99,27 @@ export function duplicateInvoice(ctx: EvalContext): Violation | null {
 }
 
 /**
- * Cumulative invoiced value would pass the encumbered PO total.
+ * There is no encumbrance left to pay this quantity at the agreed price.
  *
- * The incoming line is valued at the PO unit price, not the invoice price, so
- * that a price overage is reported once - as PRICE_OVER_TOLERANCE - instead of
- * appearing a second time here. The contract separately refuses to pay out
- * more than the remaining encumbrance, which is what stops an approved
- * over-priced hold from draining the reservation.
+ * Three deliberate asymmetries, each with a reason:
+ *
+ * 1. The incoming line is valued at the PO unit price, not the invoice price,
+ *    so a price overage is reported once - as PRICE_OVER_TOLERANCE - rather
+ *    than a second time here.
+ * 2. Value already invoiced is carried at the price actually paid, because
+ *    that is the money genuinely gone from the reservation. So an approved
+ *    over-priced hold eats budget, and the next invoice feels it.
+ * 3. Suppressed when this invoice's own quantity is over the received
+ *    allowance. One fact, one code, most specific wins: a quantity variance
+ *    is reviewable by a human, so it parks as QTY_OVER_RECEIVED instead of
+ *    being hard-rejected as a budget breach. Without this, every
+ *    over-quantity invoice would reject, and the usual real case - a trusted
+ *    vendor billing 120 when 100 arrived - could never reach the exception
+ *    queue, which is the entire point of having one.
  */
 export function budgetExceeded(ctx: EvalContext): Violation | null {
   if (ctx.po === null) return null;
+  if (qtyOverReceived(ctx) !== null) return null;
   const poTotal = lineTotal(ctx.po.qty, ctx.po.unitPrice);
   const incoming = lineTotal(ctx.invoice.qty, ctx.po.unitPrice);
   const cumulative = ctx.po.invoicedValue + incoming;
