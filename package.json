@@ -16,7 +16,9 @@
     "test:core": "pnpm --filter @zowall/gate-core test",
     "test:contracts": "forge test --root packages/contracts",
     "typecheck": "pnpm -r typecheck",
-    "journal": "pnpm --filter @zowall/journal start"
+    "journal": "pnpm --filter @zowall/journal start",
+    "postinstall": "node scripts/link-env.mjs",
+    "link-env": "node scripts/link-env.mjs"
   },
   "devDependencies": {
     "@types/node": "24.9.2",

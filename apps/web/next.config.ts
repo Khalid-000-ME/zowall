@@ -1,5 +1,11 @@
 import type { NextConfig } from "next";
 
+/**
+ * Env note: Next only reads .env files from this directory, so the root
+ * .env.local reaches it through a symlink that `scripts/link-env.mjs` creates
+ * on postinstall. Loading the root env here instead does not work - Turbopack's
+ * dev workers re-read env per process and never see it.
+ */
 const config: NextConfig = {
   // The workspace packages ship raw TypeScript on purpose: gate-core is meant
   // to be read, not consumed as a build artifact. Next compiles them in place.
