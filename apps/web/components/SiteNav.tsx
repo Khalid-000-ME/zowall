@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { Wordmark } from "@/components/Logo";
+
 const LINKS = [
   { href: "/po", label: "Dashboard" },
   { href: "/attack", label: "Attack console" },
@@ -53,16 +55,8 @@ export function SiteNav() {
           transition: "background 300ms ease-out, border-color 300ms ease-out",
         }}
       >
-        <Link
-          href="/"
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: 22,
-            textDecoration: "none",
-            letterSpacing: "-0.01em",
-          }}
-        >
-          Zowall
+        <Link href="/" style={{ textDecoration: "none" }}>
+          <Wordmark />
         </Link>
 
         <div style={{ display: "flex", gap: "var(--space-4)", fontSize: 14, flexWrap: "wrap" }}>

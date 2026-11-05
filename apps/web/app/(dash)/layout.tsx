@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { Wordmark } from "@/components/Logo";
+
 /**
  * App shell. This half of the product is a tool, not a landing page, so there
  * is no hero and no floating navbar - a persistent bar that never moves is
@@ -34,16 +36,8 @@ export default function DashLayout({ children }: { children: React.ReactNode }) 
             flexWrap: "wrap",
           }}
         >
-          <Link
-            href="/"
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: 20,
-              textDecoration: "none",
-              letterSpacing: "-0.01em",
-            }}
-          >
-            Zowall
+          <Link href="/" style={{ textDecoration: "none" }}>
+            <Wordmark size={19} />
           </Link>
 
           <nav style={{ display: "flex", gap: "var(--space-4)", fontSize: 14 }}>

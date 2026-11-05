@@ -1,5 +1,7 @@
 # Zowall
 
+**No PO, no pay.** USDT on Whitechain, refusals on Hedera HCS.
+
 Three-way invoice match for agents that hold a wallet.
 
 > **Note:** this is the developer README for the build in progress. The

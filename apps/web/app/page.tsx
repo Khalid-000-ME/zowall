@@ -4,11 +4,11 @@ import { REASON_CODES, REASON_TEXT, SEVERITY } from "@zowall/gate-core";
 import { SiteNav } from "@/components/SiteNav";
 
 /**
- * TAGLINE IS PROVISIONAL. The line below is the one from the build spec; it
- * has not been chosen from candidates yet, and the hero, README, metadata and
- * demo narration all have to carry the same one.
+ * One tagline, carried identically by the hero, the metadata, the README and
+ * the demo narration. If this line changes, all four change together.
  */
-const TAGLINE = "The agent proposes. The ledger disposes.";
+const TAGLINE = "No PO, no pay.";
+const TAGLINE_TECH = "USDT on Whitechain, refusals on Hedera HCS.";
 
 export default function Home() {
   const hard = REASON_CODES.filter((c) => SEVERITY[c] === "hard");
@@ -33,14 +33,25 @@ export default function Home() {
 
         <h1
           style={{
-            fontSize: "clamp(2.4rem, 7vw, 4.6rem)",
+            fontSize: "clamp(2.6rem, 8vw, 5rem)",
             lineHeight: 1.05,
-            margin: "var(--space-4) 0",
+            margin: "var(--space-4) 0 var(--space-3)",
             maxWidth: "22ch",
           }}
         >
           {TAGLINE}
         </h1>
+
+        <p
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: "clamp(1.1rem, 2.6vw, 1.6rem)",
+            color: "var(--text-muted)",
+            margin: "0 0 var(--space-4)",
+          }}
+        >
+          {TAGLINE_TECH}
+        </p>
 
         <p
           style={{

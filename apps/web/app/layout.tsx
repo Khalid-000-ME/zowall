@@ -22,9 +22,10 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Zowall",
+  title: "Zowall - No PO, no pay",
   description:
-    "Finance never pays an invoice that does not match the purchase order. Your agents pay everything.",
+    "Three-way invoice match for agents that hold a wallet. USDT on Whitechain, refusals on Hedera HCS.",
+  icons: { icon: "/favicon.svg" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
