@@ -13,9 +13,14 @@ export const GATE_ABI = [
         "internalType": "contract IERC20"
       },
       {
-        "name": "_attestor",
-        "type": "address",
-        "internalType": "address"
+        "name": "attestors_",
+        "type": "address[]",
+        "internalType": "address[]"
+      },
+      {
+        "name": "threshold_",
+        "type": "uint8",
+        "internalType": "uint8"
       }
     ],
     "stateMutability": "nonpayable"
@@ -65,6 +70,11 @@ export const GATE_ABI = [
             "internalType": "uint256"
           },
           {
+            "name": "actionHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
             "name": "nonce",
             "type": "uint256",
             "internalType": "uint256"
@@ -101,16 +111,35 @@ export const GATE_ABI = [
   },
   {
     "type": "function",
-    "name": "attestor",
+    "name": "attestors",
     "inputs": [],
     "outputs": [
       {
         "name": "",
-        "type": "address",
-        "internalType": "address"
+        "type": "address[]",
+        "internalType": "address[]"
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "cancelActionHash",
+    "inputs": [
+      {
+        "name": "poId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "pure"
   },
   {
     "type": "function",
@@ -147,6 +176,11 @@ export const GATE_ABI = [
             "internalType": "uint256"
           },
           {
+            "name": "actionHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
             "name": "nonce",
             "type": "uint256",
             "internalType": "uint256"
@@ -161,6 +195,67 @@ export const GATE_ABI = [
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "createActionHash",
+    "inputs": [
+      {
+        "name": "po",
+        "type": "tuple",
+        "internalType": "struct ZowallGate.POInput",
+        "components": [
+          {
+            "name": "vendor",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "payee",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "specHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "qty",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "unitPrice",
+            "type": "uint128",
+            "internalType": "uint128"
+          },
+          {
+            "name": "priceTolBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "qtyTolBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "expiry",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "pure"
   },
   {
     "type": "function",
@@ -237,6 +332,11 @@ export const GATE_ABI = [
             "name": "poId",
             "type": "uint256",
             "internalType": "uint256"
+          },
+          {
+            "name": "actionHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
           },
           {
             "name": "nonce",
@@ -447,12 +547,55 @@ export const GATE_ABI = [
   },
   {
     "type": "function",
+    "name": "holdActionHash",
+    "inputs": [
+      {
+        "name": "holdId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "approve",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "pure"
+  },
+  {
+    "type": "function",
     "name": "invoiceSeen",
     "inputs": [
       {
         "name": "",
         "type": "bytes32",
         "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isAttestor",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [
@@ -563,6 +706,35 @@ export const GATE_ABI = [
   },
   {
     "type": "function",
+    "name": "receiptActionHash",
+    "inputs": [
+      {
+        "name": "poId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "qty",
+        "type": "uint128",
+        "internalType": "uint128"
+      },
+      {
+        "name": "deliverableHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "pure"
+  },
+  {
+    "type": "function",
     "name": "resolveHold",
     "inputs": [
       {
@@ -599,6 +771,11 @@ export const GATE_ABI = [
             "name": "poId",
             "type": "uint256",
             "internalType": "uint256"
+          },
+          {
+            "name": "actionHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
           },
           {
             "name": "nonce",
@@ -700,6 +877,19 @@ export const GATE_ABI = [
       }
     ],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "threshold",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -969,6 +1159,22 @@ export const GATE_ABI = [
   },
   {
     "type": "error",
+    "name": "ActionMismatch",
+    "inputs": [
+      {
+        "name": "signed",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "attempted",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "AttestationExpired",
     "inputs": []
   },
@@ -997,6 +1203,22 @@ export const GATE_ABI = [
     "type": "error",
     "name": "BadAttestation",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BadQuorum",
+    "inputs": [
+      {
+        "name": "threshold",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "attestors",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",

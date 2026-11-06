@@ -205,4 +205,30 @@ contract QuorumTest is Test {
         out = new bytes(len);
         for (uint256 i; i < len; ++i) out[i] = b[start + i];
     }
+
+    /* ------------------------------------------- cross-language vectors -- */
+
+    /// The same inputs hash to the same constants in packages/world's tests. If
+    /// the signing service and the contract ever disagree about what an
+    /// attestation commits to, every attestation reverts; this fails first.
+    function test_actionHashesMatchTheSigningService() public view {
+        ZowallGate.POInput memory po = ZowallGate.POInput({
+            vendor: 0x1111111111111111111111111111111111111111,
+            payee: 0x000000000000000000000000000000000000bEEF,
+            specHash: bytes32(uint256(0x1111111111111111111111111111111111111111111111111111111111111111)),
+            qty: 100,
+            unitPrice: 40_000_000,
+            priceTolBps: 500,
+            qtyTolBps: 0,
+            expiry: 1_800_086_400
+        });
+        assertEq(gate.createActionHash(po), 0x074a0408d04090b7af21f9e4a49dbcc691addd36f089e3b8113e364abb35c52a);
+        assertEq(gate.cancelActionHash(7), 0x2ebb366b821f152a4878790575e1a8f092886991ec04a08a19562970e1e273d0);
+        assertEq(
+            gate.receiptActionHash(7, 50, bytes32(uint256(0x2222222222222222222222222222222222222222222222222222222222222222))),
+            0x2b729feb248cfbf3728276d56f1b1100519a2cdad273d05335d29793101c5849
+        );
+        assertEq(gate.holdActionHash(3, true), 0x30bf7943399976457b4c8c607a8040365fea1382d752f4068a8017fd5a4b2f24);
+        assertEq(gate.holdActionHash(3, false), 0x75cc1c0675da75a9929e4648aca3a95345bbbfde853124f07efc055e18fb3d27);
+    }
 }

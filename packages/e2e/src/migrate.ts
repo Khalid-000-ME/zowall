@@ -20,7 +20,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { formatUsdt, type Bytes32 } from "@zowall/gate-core";
 import { ROLE_CODE, type Role } from "@zowall/world";
 
-import { ERC20_ABI, GATE_ABI } from "./abi.ts";
+import { ERC20_ABI, GATE_ABI } from "./abi-v1.ts";
 import { explorerTx, transport, whitechainSepolia } from "./chain.ts";
 
 function env(name: string): string {

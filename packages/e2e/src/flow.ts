@@ -34,7 +34,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { REASON_TEXT, codesOf, formatUsdt, type Bytes32 } from "@zowall/gate-core";
-import { ROLE_CODE, type Role } from "@zowall/world";
+import { cancelActionHash, createActionHash, receiptActionHash, signAttestation, type Role } from "@zowall/world";
 
 import { ERC20_ABI, GATE_ABI } from "./abi.ts";
 import { explorerAddress, explorerTx, transport, whitechainSepolia } from "./chain.ts";
@@ -54,7 +54,6 @@ const USDT = env("USDT_ADDRESS") as `0x${string}`;
 const CHAIN_ID = Number(process.env["EVM_CHAIN_ID"] ?? 1874);
 
 const buyer = privateKeyToAccount(env("PRIVATE_KEY") as `0x${string}`);
-const attestor = privateKeyToAccount(env("ATTESTOR_PRIVATE_KEY") as `0x${string}`);
 
 // Fixed, so the vendor can hand the USDT back at the end and the whole run
 // can be rehearsed again. Invoice hashes carry a per-run salt instead, which
@@ -83,33 +82,24 @@ const domain = {
 
 /* -------------------------------------------------------------- signing --- */
 
-let attestNonce = BigInt(Date.now());
+const attestorKeys = (process.env["ATTESTOR_PRIVATE_KEYS"] ?? process.env["ATTESTOR_PRIVATE_KEY"] ?? "")
+  .split(",")
+  .map((k) => k.trim())
+  .filter(Boolean) as `0x${string}`[];
+const attestorThreshold = Number(process.env["ATTESTOR_THRESHOLD"] ?? "1");
 
-async function attest(personId: Bytes32, role: Role, poId: bigint) {
-  const message = {
-    personId,
-    role: ROLE_CODE[role],
-    expiry: BigInt(Math.floor(Date.now() / 1000) + 900),
-    poId,
-    nonce: ++attestNonce,
-  };
-
-  const sig = await attestor.signTypedData({
-    domain,
-    types: {
-      Attestation: [
-        { name: "personId", type: "bytes32" },
-        { name: "role", type: "uint8" },
-        { name: "expiry", type: "uint64" },
-        { name: "poId", type: "uint256" },
-        { name: "nonce", type: "uint256" },
-      ],
+/** Every attestation commits to the action it authorises, and the quorum signs it. */
+function attest(personId: Bytes32, role: Role, poId: bigint, actionHash: Bytes32) {
+  return signAttestation(
+    { personId, role, poId, actionHash },
+    {
+      privateKeys: attestorKeys,
+      threshold: attestorThreshold,
+      chainId: CHAIN_ID,
+      gateAddress: GATE,
+      ttlSeconds: 900,
     },
-    primaryType: "Attestation",
-    message,
-  });
-
-  return { ...message, sig };
+  );
 }
 
 type Invoice = {
@@ -287,23 +277,22 @@ async function main() {
     functionName: "nextPoId",
   });
 
+  const terms = {
+    vendor: vendor.address,
+    payee: vendor.address,
+    specHash: keccak256(toHex(`${qty} monitors`)),
+    qty,
+    unitPrice: UNIT,
+    priceTolBps: TOL_BPS,
+    qtyTolBps: 0,
+    expiry: BigInt(Math.floor(Date.now() / 1000) + 86_400),
+  };
+
   await send("createPO - funds reserved against the vault", {
     address: GATE,
     abi: GATE_ABI,
     functionName: "createPO",
-    args: [
-      {
-        vendor: vendor.address,
-        payee: vendor.address,
-        specHash: keccak256(toHex(`${qty} monitors`)),
-        qty,
-        unitPrice: UNIT,
-        priceTolBps: TOL_BPS,
-        qtyTolBps: 0,
-        expiry: BigInt(Math.floor(Date.now() / 1000) + 86_400),
-      },
-      await attest(ALICE, "Creator", 0n),
-    ],
+    args: [terms, await attest(ALICE, "Creator", 0n, createActionHash(terms))],
     chain: whitechainSepolia,
     account: buyer,
   });
@@ -314,7 +303,12 @@ async function main() {
     address: GATE,
     abi: GATE_ABI,
     functionName: "attestReceipt",
-    args: [poId, qty, keccak256(toHex("delivered")), await attest(BOB, "Receiver", poId)],
+    args: [
+      poId,
+      qty,
+      keccak256(toHex("delivered")),
+      await attest(BOB, "Receiver", poId, receiptActionHash(poId, qty, keccak256(toHex("delivered")))),
+    ],
     chain: whitechainSepolia,
     account: buyer,
   });
@@ -461,7 +455,7 @@ async function cancel(poId: bigint) {
     address: GATE,
     abi: GATE_ABI,
     functionName: "cancelPO",
-    args: [poId, await attest(ALICE, "Creator", poId)],
+    args: [poId, await attest(ALICE, "Creator", poId, cancelActionHash(poId))],
     chain: whitechainSepolia,
     account: buyer,
   });
