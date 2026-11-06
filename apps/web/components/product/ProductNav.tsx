@@ -31,6 +31,10 @@ const GROUPS: ReadonlyArray<{ label: string; items: readonly Item[] }> = [
       { href: "/app/metered", label: "Metered spend" },
     ],
   },
+  {
+    label: "Verify",
+    items: [{ href: "/app/proofs", label: "Proofs" }],
+  },
 ];
 
 export function ProductNav({ setupLeft, exceptions }: { setupLeft: number; exceptions: number }) {

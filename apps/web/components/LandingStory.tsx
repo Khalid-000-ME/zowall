@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { AsciiShape, type ShapeName } from "@/components/AsciiShape";
@@ -44,21 +45,40 @@ function Reveal({
   );
 }
 
-const CARDS: ReadonlyArray<{ shape: ShapeName; title: string; body: string }> = [
+/** Marks are the white originals from public/brands, never redrawn. */
+const MARKS = {
+  whitechain: { name: "Whitechain", src: "/brands/whitechain-dark.png", height: 18 },
+  world: { name: "World", src: "/brands/world-white.svg", height: 20 },
+  hedera: { name: "Hedera", src: "/brands/hedera-white.svg", height: 22 },
+} as const;
+
+const CARDS: ReadonlyArray<{
+  shape: ShapeName;
+  title: string;
+  body: string;
+  mark: keyof typeof MARKS;
+  uses: string;
+}> = [
   {
     shape: "ledger",
     title: "Ordered",
     body: "A purchase order reserves the money before anything is bought. A vendor can check it on-chain before they ship.",
+    mark: "whitechain",
+    uses: "USDT reserved on Whitechain",
   },
   {
     shape: "envelope",
     title: "Received",
     body: "A second person signs that the goods, or the calls, actually arrived. Never the person who placed the order.",
+    mark: "world",
+    uses: "A distinct human, by World ID",
   },
   {
     shape: "lock",
     title: "Refused",
     body: "An invoice that matches neither is stopped before any money moves, and the refusal is a transaction anyone can open.",
+    mark: "hedera",
+    uses: "Every refusal journalled on HCS",
   },
 ];
 
@@ -88,6 +108,11 @@ export function LandingStory() {
               <div className="land-card-body">
                 <h3 className="land-card-title">{card.title}</h3>
                 <p className="land-card-text">{card.body}</p>
+                <Link href="/app/proofs" className="land-card-mark" aria-label={`${MARKS[card.mark].name}: ${card.uses}`}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={MARKS[card.mark].src} alt={MARKS[card.mark].name} style={{ height: MARKS[card.mark].height }} />
+                  <span>{card.uses}</span>
+                </Link>
               </div>
             </article>
           </Reveal>
