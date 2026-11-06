@@ -40,3 +40,8 @@ apps/web/.data/
 # local-only pages and assets
 apps/web/app/(internal)/
 apps/web/public/_local/
+
+# third-party agent skills (installed locally, not part of the product)
+.agents/
+.claude/skills/
+skills-lock.json
