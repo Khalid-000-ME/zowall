@@ -170,7 +170,7 @@ export default async function Metered() {
             <div className="ui-panel ui-panel--sunken">
               <h3 className="ui-tile-title">How a mandate is written</h3>
               <p className="ui-tile-body" style={{ marginTop: 6, marginBottom: "var(--space-4)" }}>
-                Raise an order in <Link href="/app/orders">Orders</Link> with the endpoint URL as
+                Raise an order in <Link href="/lab/orders">Orders</Link> with the endpoint URL as
                 its description, the number of calls as the quantity, and the price per call as the
                 unit price. A second person signs for that call count before the agent may spend.
               </p>

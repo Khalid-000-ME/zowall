@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { Wordmark } from "@/components/Logo";
 
-import "../app/product.css";
+import "../ui.css";
 
 export const metadata: Metadata = {
   title: "Zowall docs",
@@ -17,36 +17,35 @@ export const metadata: Metadata = {
  */
 const SECTIONS = [
   {
-    label: "Get started",
+    label: "Start",
     items: [
       ["#overview", "Overview"],
-      ["#before", "Before you start"],
       ["#install", "Install the SDK"],
+      ["#keys", "API keys"],
     ],
   },
   {
-    label: "Pay an invoice",
+    label: "Sell",
     items: [
-      ["#sign", "The vendor signs"],
-      ["#pay", "Preview, then pay"],
-      ["#outcomes", "Handle each outcome"],
-      ["#holds", "Resolve a hold"],
-      ["#verify", "Verify a decision"],
+      ["#sell", "Register an endpoint"],
+      ["#sell-402", "Answer 402"],
+      ["#sell-checkout", "Hosted checkout"],
     ],
   },
   {
-    label: "Pay for an API",
+    label: "Buy",
     items: [
-      ["#x402", "The x402 middleware"],
-      ["#guardians", "Guardian-protected payer"],
+      ["#buy", "Discover endpoints"],
+      ["#buy-pay", "Pay with x402"],
+      ["#buy-invoice", "Pay an invoice"],
     ],
   },
   {
     label: "Reference",
     items: [
+      ["#api", "Registry API"],
+      ["#statuses", "Statuses"],
       ["#codes", "Reason codes"],
-      ["#errors", "Reverts"],
-      ["#addresses", "Addresses"],
       ["#env", "Environment"],
     ],
   },
@@ -76,8 +75,8 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
 
         <div className="ui-side-group">
           <span className="ui-side-label">Open</span>
-          <Link href="/app">Workspace</Link>
-          <Link href="/app/proofs">Proofs</Link>
+          <Link href="/app">Dashboard</Link>
+          <Link href="/registry">Registry</Link>
         </div>
       </nav>
       <main className="ui-main">

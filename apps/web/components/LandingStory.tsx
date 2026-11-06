@@ -108,7 +108,7 @@ export function LandingStory() {
               <div className="land-card-body">
                 <h3 className="land-card-title">{card.title}</h3>
                 <p className="land-card-text">{card.body}</p>
-                <Link href="/app/proofs" className="land-card-mark" aria-label={`${MARKS[card.mark].name}: ${card.uses}`}>
+                <Link href="/lab/proofs" className="land-card-mark" aria-label={`${MARKS[card.mark].name}: ${card.uses}`}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={MARKS[card.mark].src} alt={MARKS[card.mark].name} style={{ height: MARKS[card.mark].height }} />
                   <span>{card.uses}</span>

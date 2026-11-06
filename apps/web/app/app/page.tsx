@@ -1,203 +1,132 @@
 import Link from "next/link";
-import { REASON_TEXT } from "@zowall/gate-core";
 
-import { OutcomeChip } from "@/components/product/OutcomeChip";
-import { getOpenHolds, type ChainHold } from "@/lib/chain";
-import { nameOf } from "@/lib/humans";
-import { shortHex, usdt, workspaceState } from "@/lib/product";
+import { CodeBlock } from "@/components/docs/CodeBlock";
+import { listKeys } from "@/lib/accounts";
+import { endpointsOf } from "@/lib/registry";
+import { requireAccount } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
-const when = (unix: number) =>
-  unix === 0
-    ? "—"
-    : new Date(unix * 1000).toLocaleString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+function Step({ n, done, title, body, href, label }: { n: string; done: boolean; title: string; body: string; href: string; label: string }) {
+  return (
+    <li className="ui-numrow">
+      <span className="ui-numrow-n">{n}</span>
+      <span className="ui-numrow-label">{title}</span>
+      <span className="ui-numrow-note">
+        {done ? <span className="ui-chip ui-chip--ok">Done</span> : <Link href={href as "/app"}>{label} →</Link>}
+      </span>
+      <span className="ui-numrow-sub">{body}</span>
+    </li>
+  );
+}
+
+const VENDOR_SNIPPET = `import { registerEndpoint } from "@zowall/sdk";
+
+const endpoint = await registerEndpoint(
+  { baseUrl: process.env.ZOWALL_URL, apiKey: process.env.ZOWALL_API_KEY },
+  {
+    name: "Forecast",
+    url: "https://api.example.com/forecast",
+    payTo: "0.0.1234",          // the account your 402 quote pays
+    amount: "10000",            // atomic units per call (10000 tinybars = 0.0001 HBAR)
+  },
+);
+
+console.log(endpoint.status);   // "verified" once your 402 matches`;
+
+const BUYER_SNIPPET = `import { discoverEndpoints } from "@zowall/sdk";
+import { createGuard, withZowall } from "@zowall/x402";
+
+// 1. Find what you can pay for. Discovery needs no key.
+const { endpoints } = await discoverEndpoints({ baseUrl: process.env.ZOWALL_URL }, { q: "forecast" });
+
+// 2. Wrap your agent's fetch. Every 402 is checked before anything is signed.
+const guarded = withZowall({
+  guard: createGuard({ keccak256, findMandate, roles }),
+  signPayment,
+});
+
+const response = await guarded(endpoints[0].url);`;
 
 export default async function Overview() {
-  const state = await workspaceState();
+  const account = await requireAccount();
+  const keys = listKeys(account.id).filter((k) => !k.revokedAt);
 
-  let holds: ChainHold[] = [];
-  try {
-    holds = await getOpenHolds();
-  } catch {
-    // Shown as zero below; the chain banner already explains the gap.
+  if (account.role === "vendor") {
+    const endpoints = endpointsOf(account.id);
+    const verified = endpoints.filter((e) => e.status === "verified");
+
+    return (
+      <>
+        <header>
+          <p className="ui-eyebrow">Selling</p>
+          <h1 className="ui-display">Welcome, {account.name}.</h1>
+          <p className="ui-lede">Three steps to get an x402 endpoint in front of agents that can pay for it.</p>
+        </header>
+
+        <section className="ui-section">
+          <ul className="ui-numlist">
+            <Step n="01" done={endpoints.length > 0} title="Register an endpoint" body="Give us its URL, its price and the account it pays." href="/app/endpoints" label="Register" />
+            <Step n="02" done={verified.length > 0} title="Get it verified" body="We call it once with no payment and check its 402 matches what you registered." href="/app/endpoints" label="Check" />
+            <Step n="03" done={keys.length > 0} title="Use your API key" body="Register and manage endpoints from your own code with the SDK." href="/app/keys" label="Keys" />
+          </ul>
+        </section>
+
+        <section className="ui-section">
+          <div className="ui-tiles">
+            <div className="ui-tile">
+              <span className="ui-stat-label">Endpoints</span>
+              <span className="ui-stat-value">{endpoints.length}</span>
+            </div>
+            <div className="ui-tile">
+              <span className="ui-stat-label">Verified</span>
+              <span className="ui-stat-value">{verified.length}</span>
+            </div>
+            <div className="ui-tile">
+              <span className="ui-stat-label">Active keys</span>
+              <span className="ui-stat-value">{keys.length}</span>
+            </div>
+          </div>
+        </section>
+
+        <section className="ui-section">
+          <div className="ui-split">
+            <div>
+              <h2 className="ui-title">Or from code</h2>
+              <p className="ui-lede">
+                The same registration, with the SDK. See the <Link href="/docs">docs</Link> for the rest.
+              </p>
+            </div>
+            <CodeBlock code={VENDOR_SNIPPET} />
+          </div>
+        </section>
+      </>
+    );
   }
-
-  const recent = [...state.decisions].reverse().slice(0, 8);
-  const paid = state.decisions.filter((d) => d.outcome === "PAID");
-  const refused = state.decisions.filter((d) => d.outcome === "REJECTED");
-  const movedTotal = paid.reduce((sum, d) => sum + (d.paid ?? 0n), 0n);
-  const left = state.steps.filter((s) => !s.done);
 
   return (
     <>
       <header>
-        <p className="ui-eyebrow">Workspace</p>
-        <h1 className="ui-display">What your agents tried to pay.</h1>
-        <p className="ui-lede">
-          Every row below is a decision the contract made on its own. The model proposed it; the
-          rules disposed of it.
-        </p>
+        <p className="ui-eyebrow">Buying</p>
+        <h1 className="ui-display">Welcome, {account.name}.</h1>
+        <p className="ui-lede">Three steps to let an agent find an endpoint and pay for it.</p>
       </header>
 
-      {!state.chainReachable ? (
-        <div className="ui-note ui-note--warn" style={{ marginTop: "var(--space-5)" }}>
-          The Whitechain testnet node did not answer. Figures on this page may be incomplete until
-          it does.
-        </div>
-      ) : null}
-
-      {left.length > 0 ? (
-        <div className="ui-panel ui-panel--sunken" style={{ marginTop: "var(--space-5)" }}>
-          <div
-            style={{
-              display: "flex",
-              gap: "var(--space-4)",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-            }}
-          >
-            <div>
-              <h2 style={{ fontSize: 16 }}>Setup is not finished</h2>
-              <p className="ui-tile-body" style={{ marginTop: 4 }}>
-                {left.map((s) => s.title).join(", ")} still to do. The gate will refuse everything
-                until the vault holds something to spend.
-              </p>
-            </div>
-            <Link href="/app/start" className="ui-btn ui-btn--primary">
-              Continue setup
-            </Link>
-          </div>
-        </div>
-      ) : null}
-
       <section className="ui-section">
-        <div className="ui-tiles">
-          <div className="ui-tile">
-            <span className="ui-stat-label">Vault</span>
-            <span className="ui-stat-value">{state.vault ? usdt(state.vault.balance) : "—"}</span>
-            <p className="ui-tile-body">USDT the gate holds.</p>
-          </div>
-          <div className="ui-tile">
-            <span className="ui-stat-label">Reserved</span>
-            <span className="ui-stat-value">{state.vault ? usdt(state.vault.encumbered) : "—"}</span>
-            <p className="ui-tile-body">Committed to open orders.</p>
-          </div>
-          <div className="ui-tile">
-            <span className="ui-stat-label">Paid</span>
-            <span className="ui-stat-value">{usdt(movedTotal)}</span>
-            <p className="ui-tile-body">
-              {paid.length} invoice{paid.length === 1 ? "" : "s"} matched.
-            </p>
-          </div>
-          <div className="ui-tile">
-            <span className="ui-stat-label">Refused</span>
-            <span className="ui-stat-value">{refused.length}</span>
-            <p className="ui-tile-body">Stopped before any money moved.</p>
-          </div>
-        </div>
-      </section>
-
-      {holds.length > 0 ? (
-        <section className="ui-section">
-          <div className="ui-split">
-            <div>
-              <h2 className="ui-title">Waiting on a person</h2>
-              <p className="ui-lede">
-                These did not break a rule outright. They need someone who did not raise the order
-                and did not sign for delivery.
-              </p>
-            </div>
-            <ul className="ui-numlist">
-              {holds.map((h, i) => (
-                <li key={h.id.toString()} className="ui-numrow">
-                  <span className="ui-numrow-n">{String(i + 1).padStart(2, "0")}</span>
-                  <span className="ui-numrow-label">
-                    {h.codes.map((c) => REASON_TEXT[c]).join(" ")}
-                  </span>
-                  <Link href="/app/exceptions" className="ui-numrow-note">
-                    Order #{h.poId.toString()} →
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-      ) : null}
-
-      <section className="ui-section">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <h2 className="ui-title">Recent decisions</h2>
-          <Link href="/app/orders" className="ui-numrow-note">
-            All orders →
-          </Link>
-        </div>
-
-        {recent.length === 0 ? (
-          <p className="ui-lede">
-            Nothing yet. The first call your agent makes to the gate shows up here.
-          </p>
-        ) : (
-          <table className="ui-table" style={{ marginTop: "var(--space-5)" }}>
-            <thead>
-              <tr>
-                <th>Outcome</th>
-                <th>Order</th>
-                <th>Amount</th>
-                <th>Why</th>
-                <th>When</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recent.map((d) => (
-                <tr key={d.txHash}>
-                  <td>
-                    <OutcomeChip outcome={d.outcome} />
-                  </td>
-                  <td className="ui-mono">#{d.poId.toString()}</td>
-                  <td className="ui-mono">
-                    {d.paid && d.paid > 0n ? usdt(d.paid) : usdt(d.invQty * d.invUnitPrice)}
-                  </td>
-                  <td style={{ color: "var(--text-muted)", fontSize: 13.5 }}>
-                    {d.codes.length === 0
-                      ? "Matched the order and the receipt."
-                      : d.codes.map((c) => REASON_TEXT[c]).join(" ")}
-                  </td>
-                  <td className="ui-mono ui-faint">{when(d.timestamp)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+        <ul className="ui-numlist">
+          <Step n="01" done={keys.length > 0} title="Keep your API key" body="Your key identifies your agents to the platform. Create another any time." href="/app/keys" label="Keys" />
+          <Step n="02" done={false} title="Find an endpoint" body="Browse what has been verified, its price, and who it pays." href="/registry" label="Browse" />
+          <Step n="03" done={false} title="Pay with the SDK" body="Wrap your agent's fetch so every 402 is checked before it is paid." href="/docs" label="Read the docs" />
+        </ul>
       </section>
 
       <section className="ui-section">
         <div className="ui-split">
           <div>
-            <h2 className="ui-title">Your people</h2>
-            <p className="ui-lede">
-              The gate compares these ids, not names or wallets. One human cannot hold two roles on
-              one order.
-            </p>
+            <h2 className="ui-title">In code</h2>
+            <p className="ui-lede">Discover endpoints, then pay for one.</p>
           </div>
-          <ul className="ui-numlist">
-            {state.people.map((h, i) => (
-              <li key={h.personId} className="ui-numrow">
-                <span className="ui-numrow-n">{String(i + 1).padStart(2, "0")}</span>
-                <span className="ui-numrow-label">{nameOf(h.personId)}</span>
-                <span className="ui-numrow-note">
-                  <span className="ui-chip ui-chip--ok">World ID</span>
-                </span>
-                <span className="ui-numrow-sub ui-mono">{shortHex(h.personId, 10, 6)}</span>
-              </li>
-            ))}
-          </ul>
+          <CodeBlock code={BUYER_SNIPPET} />
         </div>
       </section>
     </>

@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { Wordmark } from "@/components/Logo";
 
-import "../app/product.css";
+import "../ui.css";
 
 export const metadata: Metadata = {
   title: "Zowall registry",

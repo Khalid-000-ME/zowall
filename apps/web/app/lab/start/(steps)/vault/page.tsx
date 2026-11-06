@@ -121,10 +121,10 @@ export default async function VaultStep() {
       </section>
 
       <div className="ui-actions" style={{ marginTop: "var(--space-6)" }}>
-        <Link href="/app/start/agent" className="ui-btn ui-btn--primary">
+        <Link href="/lab/start/agent" className="ui-btn ui-btn--primary">
           Next: Agent
         </Link>
-        <Link href="/app/start/people" className="ui-btn">
+        <Link href="/lab/start/people" className="ui-btn">
           Back
         </Link>
       </div>

@@ -19,22 +19,22 @@ const GROUPS: ReadonlyArray<{ label: string; items: readonly Item[] }> = [
   {
     label: "Workspace",
     items: [
-      { href: "/app", label: "Overview" },
-      { href: "/app/orders", label: "Orders" },
-      { href: "/app/exceptions", label: "Exceptions" },
+      { href: "/lab", label: "Overview" },
+      { href: "/lab/orders", label: "Orders" },
+      { href: "/lab/exceptions", label: "Exceptions" },
     ],
   },
   {
     label: "Connect",
     items: [
-      { href: "/app/agents", label: "Agents" },
-      { href: "/app/metered", label: "Metered spend" },
+      { href: "/lab/agents", label: "Agents" },
+      { href: "/lab/metered", label: "Metered spend" },
     ],
   },
   {
     label: "Verify",
     items: [
-      { href: "/app/proofs", label: "Proofs" },
+      { href: "/lab/proofs", label: "Proofs" },
       { href: "/docs", label: "SDK docs" },
     ],
   },
@@ -44,7 +44,7 @@ export function ProductNav({ setupLeft, exceptions }: { setupLeft: number; excep
   const pathname = usePathname();
 
   const current = (href: string) =>
-    href === "/app" ? pathname === "/app" : pathname.startsWith(href);
+    href === "/lab" ? pathname === "/lab" : pathname.startsWith(href);
 
   return (
     <nav className="ui-side">
@@ -54,7 +54,7 @@ export function ProductNav({ setupLeft, exceptions }: { setupLeft: number; excep
 
       <div className="ui-side-group">
         <span className="ui-side-label">Setup</span>
-        <Link href="/app/start" aria-current={current("/app/start") ? "page" : undefined}>
+        <Link href="/lab/start" aria-current={current("/lab/start") ? "page" : undefined}>
           Getting started
           {setupLeft > 0 ? <span className="ui-chip">{setupLeft} left</span> : null}
         </Link>
@@ -66,11 +66,11 @@ export function ProductNav({ setupLeft, exceptions }: { setupLeft: number; excep
           {group.items.map((item) => (
             <Link
               key={item.href}
-              href={item.href as "/app"}
+              href={item.href as "/lab"}
               aria-current={current(item.href) ? "page" : undefined}
             >
               {item.label}
-              {item.href === "/app/exceptions" && exceptions > 0 ? (
+              {item.href === "/lab/exceptions" && exceptions > 0 ? (
                 <span className="ui-chip ui-chip--held">{exceptions}</span>
               ) : null}
             </Link>

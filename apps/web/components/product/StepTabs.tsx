@@ -18,12 +18,12 @@ export function StepTabs({ steps }: { steps: SetupStep[] }) {
   return (
     <div className="ui-tabs" role="navigation" aria-label="Setup steps">
       {steps.map((step) => {
-        const href = `/app/start/${step.slug}`;
+        const href = `/lab/start/${step.slug}`;
         const current = pathname === href;
         return (
           <Link
             key={step.slug}
-            href={href as "/app/start"}
+            href={href as "/lab/start"}
             className="ui-tab"
             aria-current={current ? "page" : undefined}
           >

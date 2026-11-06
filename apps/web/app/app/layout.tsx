@@ -1,31 +1,23 @@
 import type { Metadata } from "next";
 
-import { ProductNav } from "@/components/product/ProductNav";
-import { getOpenHolds } from "@/lib/chain";
-import { workspaceState } from "@/lib/product";
+import { AppNav } from "@/components/account/AppNav";
+import { requireAccount } from "@/lib/session";
 
-import "./product.css";
+import "../ui.css";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Zowall workspace",
-  description: "Set up the gate, connect an agent, and work the exceptions it raises.",
+  title: "Zowall",
+  description: "Register x402 endpoints, manage your API keys, and use the SDK.",
 };
 
-export default async function ProductLayout({ children }: { children: React.ReactNode }) {
-  const state = await workspaceState();
-
-  let open = 0;
-  try {
-    open = (await getOpenHolds()).length;
-  } catch {
-    // The sidebar badge is not worth failing a page over.
-  }
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const account = await requireAccount();
 
   return (
     <div className="ui ui-shell">
-      <ProductNav setupLeft={state.steps.filter((s) => !s.done).length} exceptions={open} />
+      <AppNav role={account.role} name={account.name} email={account.email} />
       <main className="ui-main">
         <div className="ui-main-inner">{children}</div>
       </main>

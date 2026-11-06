@@ -27,11 +27,11 @@ export default async function StartHub() {
           your agent.
         </p>
         <div className="ui-actions" style={{ marginTop: "var(--space-5)" }}>
-          <Link href={`/app/start/${next.slug}` as "/app/start"} className="ui-btn ui-btn--primary">
+          <Link href={`/lab/start/${next.slug}` as "/lab/start"} className="ui-btn ui-btn--primary">
             {state.ready ? "Review setup" : `Continue: ${next.title}`}
           </Link>
           {state.ready ? (
-            <Link href="/app" className="ui-btn">
+            <Link href="/lab" className="ui-btn">
               Go to the workspace
             </Link>
           ) : null}
@@ -44,7 +44,7 @@ export default async function StartHub() {
             <li key={step.slug} className="ui-numrow">
               <span className="ui-numrow-n">{step.n}</span>
               <Link
-                href={`/app/start/${step.slug}` as "/app/start"}
+                href={`/lab/start/${step.slug}` as "/lab/start"}
                 className="ui-numrow-label"
                 style={{ textDecoration: "none" }}
               >

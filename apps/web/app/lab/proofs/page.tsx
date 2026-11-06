@@ -171,7 +171,7 @@ export default async function Proofs() {
               Whitechain, not a config file.
             </p>
             <p style={{ marginTop: "var(--space-4)" }}>
-              <Link href="/app/metered" className="ui-numrow-note">
+              <Link href="/lab/metered" className="ui-numrow-note">
                 Run it against a live 402 →
               </Link>
             </p>
@@ -270,7 +270,7 @@ export default async function Proofs() {
               Verified live against the facilitator: the agent signing alone is refused with{" "}
               <span className="ui-mono">invalid_exact_hedera_payload_signature_invalid</span>; the agent
               plus a guardian quorum is accepted and settles. Run both in{" "}
-              <Link href="/app/metered">Metered spend</Link>.
+              <Link href="/lab/metered">Metered spend</Link>.
             </p>
           </div>
         </div>

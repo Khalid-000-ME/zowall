@@ -160,4 +160,19 @@ export {
   type CheckoutSessionInput,
 } from "./checkout.ts";
 
+export {
+  RegistryError,
+  discoverEndpoints,
+  getEndpoint,
+  myEndpoints,
+  registerEndpoint,
+  removeEndpoint,
+  toAtomic,
+  verifyEndpoint,
+  type Discovery,
+  type NewEndpoint,
+  type RegisteredEndpoint,
+  type RegistryConfig,
+} from "./registry.ts";
+
 export type { Bytes32, Invoice, Outcome, ReasonCode };

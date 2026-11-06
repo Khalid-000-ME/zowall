@@ -7,6 +7,7 @@
  * buyer to the URL it returns.
  *
  *   set -a; source .env.local; set +a
+ *   ZOWALL_API_KEY=<a vendor key from the dashboard> \
  *   PO_ID=<order id> QTY=<units> GATEWAY=http://localhost:3000 \
  *     node packages/sdk/examples/checkout.ts
  */
@@ -71,7 +72,7 @@ const signature = await signInvoice(invoice, {
 // 3. Ask the gateway for a checkout. This call carries the merchant's secret, so it
 //    runs on the merchant's server and never in a browser.
 const session = await createCheckoutSession(
-  { baseUrl: gateway, apiKey: need("CHECKOUT_API_KEY") },
+  { baseUrl: gateway, apiKey: need("ZOWALL_API_KEY") },
   {
     invoice,
     signature,

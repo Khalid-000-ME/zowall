@@ -79,7 +79,7 @@ export default async function Agents() {
               never make one on its own.
             </p>
             <p style={{ marginTop: "var(--space-4)" }}>
-              <Link href="/app/start/agent" className="ui-numrow-note">
+              <Link href="/lab/start/agent" className="ui-numrow-note">
                 Setup instructions →
               </Link>
             </p>

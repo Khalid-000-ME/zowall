@@ -167,10 +167,10 @@ HTTP/1.1 402 Payment Required
       </section>
 
       <div className="ui-actions" style={{ marginTop: "var(--space-6)" }}>
-        <Link href="/app/start/rules" className="ui-btn ui-btn--primary">
+        <Link href="/lab/start/rules" className="ui-btn ui-btn--primary">
           Next: Rules
         </Link>
-        <Link href="/app/start/vault" className="ui-btn">
+        <Link href="/lab/start/vault" className="ui-btn">
           Back
         </Link>
       </div>

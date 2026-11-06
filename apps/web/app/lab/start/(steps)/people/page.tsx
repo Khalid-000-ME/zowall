@@ -105,7 +105,7 @@ export default async function PeopleStep() {
       </section>
 
       <div className="ui-actions" style={{ marginTop: "var(--space-6)" }}>
-        <Link href="/app/start/vault" className="ui-btn ui-btn--primary">
+        <Link href="/lab/start/vault" className="ui-btn ui-btn--primary">
           Next: Vault
         </Link>
       </div>

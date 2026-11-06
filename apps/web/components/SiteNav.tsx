@@ -6,8 +6,9 @@ import { useEffect, useState } from "react";
 import { Wordmark } from "@/components/Logo";
 
 const LINKS = [
-  { href: "/app", label: "App" },
+  { href: "/registry", label: "Registry" },
   { href: "/docs", label: "Docs" },
+  { href: "/login", label: "Log in" },
   { href: "/attack", label: "Attack console" },
   { href: "/journal", label: "Journal" },
 ] as const;

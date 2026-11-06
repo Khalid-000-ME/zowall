@@ -27,3 +27,21 @@ export function ago(ms: number): string {
   if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
   return `${Math.floor(s / 86400)} d ago`;
 }
+
+export const ASSETS = [
+  { id: "0.0.0", symbol: "HBAR", decimals: 8 },
+  { id: "0.0.429274", symbol: "USDC", decimals: 6 },
+] as const;
+
+/** "0.0001" HBAR -> "10000" tinybars. Exact: it never goes through a float. */
+export function toAtomic(asset: string, human: string): string {
+  const a = ASSETS.find((x) => x.id === asset);
+  if (!a) throw new Error("Choose a supported asset.");
+  const m = /^(\d{1,18})(?:\.(\d{1,18}))?$/.exec(human.trim());
+  if (!m) throw new Error("Enter the price as a number, such as 0.0001.");
+  const frac = (m[2] ?? "").padEnd(a.decimals, "0");
+  if (frac.length > a.decimals) throw new Error(`${a.symbol} has ${a.decimals} decimal places at most.`);
+  const atomic = BigInt(m[1]! + frac);
+  if (atomic === 0n) throw new Error("The price must be above zero.");
+  return atomic.toString();
+}

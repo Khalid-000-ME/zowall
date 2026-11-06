@@ -47,11 +47,11 @@ export function Hero({ tagline, taglineTech }: { tagline: string; taglineTech: s
         </p>
 
         <div className="hero-actions">
-          <Link href="/app" className="hero-btn hero-btn-primary">
-            Open the app
+          <Link href="/signup" className="hero-btn hero-btn-primary">
+            Get started
           </Link>
-          <Link href="/walkthrough" className="hero-btn hero-btn-ghost">
-            See how it works
+          <Link href="/docs" className="hero-btn hero-btn-ghost">
+            Read the docs
           </Link>
         </div>
 
