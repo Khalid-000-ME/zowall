@@ -543,3 +543,47 @@ button.ui-tab {
   color: var(--held);
   border-color: transparent;
 }
+
+/* ---------------------------------------------------------------- proofs -- */
+
+/* One behaviour for every sponsor mark: quiet at rest, full on hover. */
+.ui-mark {
+  display: inline-flex;
+  opacity: 0.6;
+  transition: opacity 160ms ease-out;
+}
+
+.ui-mark:hover,
+.ui-mark:focus-visible {
+  opacity: 1;
+}
+
+.ui-copy {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color 140ms ease-out;
+}
+
+.ui-copy:hover {
+  color: var(--text);
+}
+
+.ui-proof-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-5);
+}
+
+.ui-path {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12.5px;
+  color: var(--text);
+}
