@@ -66,6 +66,25 @@ node packages/e2e/src/flow.ts --refund --cleanup
 Amounts are small because the testnet treasury is 5 USDT. The control is
 identical at any scale, and the runner sizes each order to what the vault holds.
 
+## Try it
+
+```bash
+pnpm install
+cp .env.example .env.local     # fill it in; see docs/SETUP.md
+pnpm dev
+```
+
+| Page | What it is |
+|---|---|
+| `/walkthrough` | Eleven steps against the real gate: set up an order, attacks it refuses, a matching invoice, exceptions that need a second person, and a replay of the journal |
+| `/attack` | Type anything a finance team might receive. A deliberately gullible agent acts on it and the gate answers |
+| `/po`, `/match/[id]` | Purchase orders, and the three documents side by side with the fields that disagree highlighted |
+| `/holds` | The exception queue. Try approving as the person who raised the order |
+| `/journal` | The Hedera journal read from a public mirror node, each entry checked against its Whitechain decision |
+| `/vendor/[poId]` | What the vendor sees: what is reserved for them and where their invoice stands |
+
+Every page reads the chain and the Hedera topic directly. There is no database.
+
 ## Layout
 
 ```

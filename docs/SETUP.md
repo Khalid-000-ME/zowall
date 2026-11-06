@@ -166,6 +166,29 @@ token with a `TokenAssociateTransaction` first, or requests fail with
 
 ---
 
+## 7. Demo executor
+
+The walkthrough, the attack console, the holds page and the order form all
+submit real transactions from the server. That is switched off unless:
+
+```
+DEMO_ENABLED=true
+VENDOR_PRIVATE_KEY=0x...      # signs vendor invoices; any funded-for-gas key
+GATE_DEPLOY_BLOCK=<block>     # first block of the gate, bounds log scans
+```
+
+The executor signs as the buyer's relayer (`PRIVATE_KEY`), the vendor and the
+attestor, and serialises its transactions on one nonce. Leave `DEMO_ENABLED`
+unset on any deployment that should only be read: every page still works, from
+chain data, but nothing can be submitted.
+
+`GATE_DEPLOY_BLOCK` matters because the public RPC rejects `eth_getLogs` over
+more than 10,000 blocks, so reading decisions back needs a starting point.
+
+Use **Reset** on the walkthrough to cancel open orders and have the vendor return
+what it was paid. The contract has no withdraw function, so that is the only way
+funds go back to the vault.
+
 ## Check everything
 
 ```bash
@@ -181,6 +204,13 @@ the chain:
 ```bash
 set -a; source .env.local; set +a
 node packages/e2e/src/flow.ts --refund --cleanup
+```
+
+If you change the contract, regenerate the ABI the SDK and web app share:
+
+```bash
+node scripts/gen-abi.mjs          # writes packages/sdk/src/abi.ts
+node scripts/gen-abi.mjs --check  # fails if it is stale
 ```
 
 Never commit `.env.local`. `git check-ignore .env.local` confirms it is ignored.
