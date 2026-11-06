@@ -48,7 +48,7 @@ export function publicClient(): PublicClient {
   if (!client) {
     client = createPublicClient({
       chain: whitechainSepolia,
-      transport: http(serverEnv().rpcUrl, { retryCount: 6, retryDelay: 1_200, timeout: 30_000 }),
+      transport: http(serverEnv().rpcUrl, { retryCount: 6, retryDelay: 500, timeout: 20_000 }),
     }) as PublicClient;
   }
   return client;

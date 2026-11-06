@@ -17,6 +17,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@hashgraph/sdk':
+        specifier: 2.64.5
+        version: 2.64.5(bn.js@5.2.5)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.0.1)(react@19.2.0))
       '@worldcoin/idkit':
         specifier: 4.6.0
         version: 4.6.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -43,7 +46,7 @@ importers:
         version: 0.468.0(react@19.2.0)
       next:
         specifier: 16.0.1
-        version: 16.0.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 16.0.1(@babel/core@7.29.13)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       react:
         specifier: 19.2.0
         version: 19.2.0
@@ -1971,6 +1974,23 @@ snapshots:
       protobufjs: 7.6.6
       yargs: 17.7.3
 
+  '@hashgraph/cryptography@1.7.2(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.0.1)(react@19.2.0))':
+    dependencies:
+      '@noble/curves': 1.9.7
+      asn1js: 3.1.0
+      bignumber.js: 9.3.1
+      bn.js: 5.2.5
+      buffer: 6.0.3
+      crypto-js: 4.2.0
+      forge-light: 1.1.4
+      js-base64: 3.9.6
+      react-native-get-random-values: 1.11.0(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.0.1)(react@19.2.0))
+      spark-md5: 3.0.2
+      tweetnacl: 1.0.3
+      utf8: 3.0.0
+    transitivePeerDependencies:
+      - react-native
+
   '@hashgraph/cryptography@1.7.2(react-native@0.88.1(@babel/core@7.29.13)(react@19.3.1))':
     dependencies:
       '@noble/curves': 1.9.7
@@ -1992,6 +2012,29 @@ snapshots:
     dependencies:
       long: 5.3.2
       protobufjs: 7.2.5
+
+  '@hashgraph/sdk@2.64.5(bn.js@5.2.5)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.0.1)(react@19.2.0))':
+    dependencies:
+      '@ethersproject/abi': 5.8.0
+      '@ethersproject/bignumber': 5.8.0
+      '@ethersproject/bytes': 5.8.0
+      '@ethersproject/rlp': 5.8.0
+      '@grpc/grpc-js': 1.14.7
+      '@hashgraph/cryptography': 1.7.2(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.0.1)(react@19.2.0))
+      '@hashgraph/proto': 2.18.5
+      bignumber.js: 9.3.1
+      bn.js: 5.2.5
+      crypto-js: 4.2.0
+      js-base64: 3.9.6
+      long: 5.3.2
+      pino: 9.14.0
+      pino-pretty: 13.2.0
+      protobufjs: 7.2.5
+      rfc4648: 1.5.4
+      utf8: 3.0.0
+    transitivePeerDependencies:
+      - expo-crypto
+      - react-native
 
   '@hashgraph/sdk@2.64.5(bn.js@5.2.5)(react-native@0.88.1(@babel/core@7.29.13)(react@19.3.1))':
     dependencies:
@@ -2278,6 +2321,15 @@ snapshots:
   '@react-native/gradle-plugin@0.88.1': {}
 
   '@react-native/normalize-colors@0.88.1': {}
+
+  '@react-native/virtualized-lists@0.88.1(@types/react@19.0.1)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.0.1)(react@19.2.0))(react@19.2.0)':
+    dependencies:
+      invariant: 2.2.4
+      nullthrows: 1.1.1
+      react: 19.2.0
+      react-native: 0.88.1(@babel/core@7.29.13)(@types/react@19.0.1)(react@19.2.0)
+    optionalDependencies:
+      '@types/react': 19.0.1
 
   '@react-native/virtualized-lists@0.88.1(react-native@0.88.1(@babel/core@7.29.13)(react@19.3.1))(react@19.3.1)':
     dependencies:
@@ -2916,7 +2968,7 @@ snapshots:
     dependencies:
       content-type: 2.1.0
 
-  next@16.0.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
+  next@16.0.1(@babel/core@7.29.13)(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
     dependencies:
       '@next/env': 16.0.1
       '@swc/helpers': 0.5.15
@@ -2924,7 +2976,7 @@ snapshots:
       postcss: 8.4.31
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
-      styled-jsx: 5.1.6(react@19.2.0)
+      styled-jsx: 5.1.6(@babel/core@7.29.13)(react@19.2.0)
     optionalDependencies:
       '@next/swc-darwin-arm64': 16.0.1
       '@next/swc-darwin-x64': 16.0.1
@@ -3132,10 +3184,57 @@ snapshots:
 
   react-is@18.3.1: {}
 
+  react-native-get-random-values@1.11.0(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.0.1)(react@19.2.0)):
+    dependencies:
+      fast-base64-decode: 1.0.0
+      react-native: 0.88.1(@babel/core@7.29.13)(@types/react@19.0.1)(react@19.2.0)
+
   react-native-get-random-values@1.11.0(react-native@0.88.1(@babel/core@7.29.13)(react@19.3.1)):
     dependencies:
       fast-base64-decode: 1.0.0
       react-native: 0.88.1(@babel/core@7.29.13)(react@19.3.1)
+
+  react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.0.1)(react@19.2.0):
+    dependencies:
+      '@react-native/asset-utils': 0.88.1
+      '@react-native/codegen': 0.88.1(@babel/core@7.29.13)
+      '@react-native/community-cli-plugin': 0.88.1
+      '@react-native/gradle-plugin': 0.88.1
+      '@react-native/normalize-colors': 0.88.1
+      '@react-native/virtualized-lists': 0.88.1(@types/react@19.0.1)(react-native@0.88.1(@babel/core@7.29.13)(@types/react@19.0.1)(react@19.2.0))(react@19.2.0)
+      anser: 1.4.10
+      ansi-regex: 5.0.1
+      base64-js: 1.5.1
+      flow-enums-runtime: 0.0.6
+      flow-parser: 0.327.0
+      hermes-compiler: 260318099.0.5
+      invariant: 2.2.4
+      memoize-one: 5.2.1
+      metro-runtime: 0.87.3
+      metro-source-map: 0.87.3
+      nullthrows: 1.1.1
+      pretty-format: 29.7.0
+      promise: 8.3.0
+      react: 19.2.0
+      react-devtools-core: 6.1.5
+      react-refresh: 0.14.2
+      regenerator-runtime: 0.13.11
+      scheduler: 0.28.0
+      semver: 7.8.6
+      stacktrace-parser: 0.1.11
+      tinyglobby: 0.2.17
+      whatwg-fetch: 3.6.20
+      ws: 7.5.13
+      yargs: 17.7.3
+    optionalDependencies:
+      '@types/react': 19.0.1
+    transitivePeerDependencies:
+      - '@babel/core'
+      - '@react-native-community/cli'
+      - '@react-native/metro-config'
+      - bufferutil
+      - supports-color
+      - utf-8-validate
 
   react-native@0.88.1(@babel/core@7.29.13)(react@19.3.1):
     dependencies:
@@ -3323,10 +3422,12 @@ snapshots:
 
   strip-json-comments@5.0.3: {}
 
-  styled-jsx@5.1.6(react@19.2.0):
+  styled-jsx@5.1.6(@babel/core@7.29.13)(react@19.2.0):
     dependencies:
       client-only: 0.0.1
       react: 19.2.0
+    optionalDependencies:
+      '@babel/core': 7.29.13
 
   supports-color@7.2.0:
     dependencies:

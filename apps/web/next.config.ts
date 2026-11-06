@@ -17,6 +17,9 @@ const config: NextConfig = {
     "@zowall/agent",
   ],
   typedRoutes: true,
+  // Loaded from node_modules at runtime rather than bundled: the Hedera SDK is
+  // large and carries native-style dependencies that bundlers handle badly.
+  serverExternalPackages: ["@hashgraph/sdk"],
 };
 
 export default config;
