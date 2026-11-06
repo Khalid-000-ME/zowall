@@ -135,6 +135,8 @@ export async function evmSourceFromChain(
       journalDigest: a.journalDigest as Bytes32,
       txHash: log.transactionHash,
       blockNumber: Number(log.blockNumber),
+      paid: a.paid,
+      holdId: a.holdId,
     });
   }
 

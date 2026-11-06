@@ -33,3 +33,6 @@ CONTEXT-research-insights.md
 
 # personal working notes - never published
 *.local.md
+
+# app-local label cache
+apps/web/.data/

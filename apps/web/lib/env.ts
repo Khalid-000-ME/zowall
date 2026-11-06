@@ -10,6 +10,15 @@ export type ServerEnv = {
   chainId: number;
   rpcUrl: string;
   gateAddress: `0x${string}` | null;
+  /** first block of the gate; bounds log scans */
+  gateDeployBlock: bigint | null;
+  /** lets the walkthrough and attack console submit real transactions */
+  demoEnabled: boolean;
+  deployerKey: `0x${string}` | null;
+  vendorKey: `0x${string}` | null;
+  hederaAccountId: string | null;
+  hederaKey: string | null;
+  hederaSubmitKey: string | null;
   usdtAddress: `0x${string}` | null;
   attestorKey: `0x${string}` | null;
   hederaTopicId: string | null;
@@ -25,6 +34,13 @@ export function serverEnv(): ServerEnv {
     chainId: Number(process.env.EVM_CHAIN_ID ?? 1874),
     rpcUrl: process.env.EVM_RPC_URL ?? "https://rpc.testnet.whitechain.io",
     gateAddress: hex(process.env.GATE_ADDRESS),
+    gateDeployBlock: process.env.GATE_DEPLOY_BLOCK ? BigInt(process.env.GATE_DEPLOY_BLOCK) : null,
+    demoEnabled: process.env.DEMO_ENABLED === "true",
+    deployerKey: hex(process.env.PRIVATE_KEY),
+    vendorKey: hex(process.env.VENDOR_PRIVATE_KEY),
+    hederaAccountId: process.env.HEDERA_ACCOUNT_ID ?? null,
+    hederaKey: process.env.HEDERA_PRIVATE_KEY ?? null,
+    hederaSubmitKey: process.env.HEDERA_SUBMIT_KEY ?? null,
     usdtAddress: hex(process.env.USDT_ADDRESS),
     attestorKey: hex(process.env.ATTESTOR_PRIVATE_KEY),
     hederaTopicId: process.env.HEDERA_TOPIC_ID ?? null,

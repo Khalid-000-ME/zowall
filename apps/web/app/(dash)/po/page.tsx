@@ -2,10 +2,25 @@ import Link from "next/link";
 import { formatUsdt } from "@zowall/gate-core";
 
 import { Empty } from "@/components/Empty";
-import { purchaseOrders } from "@/lib/store";
+import { VaultStrip } from "@/components/VaultStrip";
+import { getPOs } from "@/lib/chain";
+import { serverEnv } from "@/lib/env";
+import { describe } from "@/lib/store";
 
-export default function PurchaseOrdersPage() {
-  const all = purchaseOrders.all();
+export const dynamic = "force-dynamic";
+
+export default async function PurchaseOrdersPage() {
+  const env = serverEnv();
+
+  let pos: Awaited<ReturnType<typeof getPOs>> = [];
+  let error: string | null = null;
+  if (env.gateAddress) {
+    try {
+      pos = await getPOs();
+    } catch (err) {
+      error = err instanceof Error ? err.message : String(err);
+    }
+  }
 
   return (
     <>
@@ -15,11 +30,13 @@ export default function PurchaseOrdersPage() {
           justifyContent: "space-between",
           alignItems: "baseline",
           marginBottom: "var(--space-5)",
+          flexWrap: "wrap",
+          gap: 12,
         }}
       >
         <h1 style={{ fontSize: 30 }}>Purchase orders</h1>
         <Link
-          href="/po/new"
+          href="/attack"
           style={{
             background: "var(--accent)",
             color: "var(--accent-text)",
@@ -29,43 +46,53 @@ export default function PurchaseOrdersPage() {
             fontSize: 14,
           }}
         >
-          New
+          Try to break it
         </Link>
       </div>
 
-      {all.length === 0 ? (
+      <VaultStrip />
+
+      <div style={{ height: "var(--space-5)" }} />
+
+      {error ? (
+        <p style={{ color: "var(--rejected)" }}>Could not read the chain: {error}</p>
+      ) : pos.length === 0 ? (
         <Empty title="No purchase orders yet. Raise one to reserve funds against it." />
       ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-          <thead>
-            <tr style={{ textAlign: "left", color: "var(--text-faint)", fontSize: 12 }}>
-              <th style={{ padding: "8px 0" }}>PO</th>
-              <th>Description</th>
-              <th>Ordered</th>
-              <th>Received</th>
-              <th>Invoiced</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {all.map((po) => (
-              <tr key={po.id.toString()} style={{ borderTop: "1px solid var(--border)" }}>
-                <td style={{ padding: "10px 0" }}>
-                  <Link href={`/match/${po.id}`} className="mono">
-                    #{po.id.toString()}
-                  </Link>
-                </td>
-                <td>{po.description}</td>
-                <td className="mono">
-                  {po.qty.toString()} @ {formatUsdt(po.unitPrice)}
-                </td>
-                <td className="mono">{po.received.toString()}</td>
-                <td className="mono">{po.invoicedQty.toString()}</td>
-                <td>{po.status}</td>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+            <thead>
+              <tr style={{ textAlign: "left", color: "var(--text-faint)", fontSize: 12 }}>
+                <th style={{ padding: "8px 0" }}>PO</th>
+                <th>For</th>
+                <th>Ordered</th>
+                <th>Received</th>
+                <th>Invoiced</th>
+                <th>Reserved</th>
+                <th>Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {pos.map((po) => (
+                <tr key={po.id.toString()} style={{ borderTop: "1px solid var(--border)" }}>
+                  <td style={{ padding: "10px 0" }}>
+                    <Link href={`/match/${po.id}`} className="mono">
+                      #{po.id.toString()}
+                    </Link>
+                  </td>
+                  <td>{describe(po.id) ?? <span style={{ color: "var(--text-faint)" }}>—</span>}</td>
+                  <td className="mono">
+                    {po.qty.toString()} @ {formatUsdt(po.unitPrice)}
+                  </td>
+                  <td className="mono">{po.received.toString()}</td>
+                  <td className="mono">{po.invoicedQty.toString()}</td>
+                  <td className="mono">{formatUsdt(po.encumbered)}</td>
+                  <td>{po.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </>
   );

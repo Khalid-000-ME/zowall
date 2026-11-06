@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { ROLES, assertDistinct, signAttestation, SodError, type Role } from "@zowall/world";
 
-import { enrollments, purchaseOrders } from "@/lib/store";
+import { getPO } from "@/lib/chain";
+import { enrollments } from "@/lib/store";
 import { serverEnv } from "@/lib/env";
 
 /**
@@ -44,15 +45,17 @@ export async function POST(request: Request) {
   const poId = BigInt(body.poId ?? "0");
 
   if (poId > 0n) {
-    const po = purchaseOrders.get(poId);
+    const po = await getPO(poId);
     if (!po) {
       return NextResponse.json({ ok: false, detail: `no purchase order ${poId}` }, { status: 404 });
     }
 
     try {
+      const none = `0x${"00".repeat(32)}`;
       assertDistinct(enrollment.personId, {
         creator: role === "Creator" ? null : po.creatorPersonId,
-        receiver: role === "Receiver" ? null : po.receiverPersonId,
+        receiver:
+          role === "Receiver" || po.receiverPersonId === none ? null : po.receiverPersonId,
       });
     } catch (err) {
       if (err instanceof SodError) {

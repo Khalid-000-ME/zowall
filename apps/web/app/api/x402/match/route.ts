@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { evaluate, type EvalContext } from "@zowall/gate-core";
 
-import { decisions, purchaseOrders } from "@/lib/store";
+import { getPO, publicClient } from "@/lib/chain";
+import { serverEnv } from "@/lib/env";
+import { GATE_ABI } from "@zowall/sdk";
 
 /**
  * The metered endpoint: "will this invoice be paid, and if not, exactly why".
@@ -65,8 +67,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "poId, qty, unitPrice and payee are required" }, { status: 400 });
   }
 
-  const po = purchaseOrders.get(BigInt(body.poId));
+  const po = await getPO(BigInt(body.poId));
   const invoiceHash = body.invoiceHash ?? (`0x${"00".repeat(32)}` as const);
+
+  // Whether this exact invoice was already decided is a fact on the chain.
+  const alreadySeen =
+    body.invoiceHash && serverEnv().gateAddress
+      ? await publicClient().readContract({
+          address: serverEnv().gateAddress!,
+          abi: GATE_ABI,
+          functionName: "invoiceSeen",
+          args: [body.invoiceHash],
+        })
+      : false;
 
   const context: EvalContext = {
     po: po
@@ -101,12 +114,11 @@ export async function POST(request: Request) {
     // say about the numbers, so the signature is assumed good and the
     // duplicate check is not applied to a hash that was never submitted.
     recoveredSigner: body.vendor ?? po?.vendor ?? null,
-    alreadySeen: body.invoiceHash
-      ? decisions.byInvoiceHash(body.invoiceHash) !== undefined
-      : false,
+    alreadySeen,
     roles: {
       creatorPersonId: po?.creatorPersonId ?? (`0x${"00".repeat(32)}` as const),
-      receiverPersonId: po?.receiverPersonId ?? null,
+      receiverPersonId:
+        po && po.receiverPersonId !== `0x${"00".repeat(32)}` ? po.receiverPersonId : null,
       approverPersonId: null,
     },
     now: BigInt(Math.floor(Date.now() / 1000)),

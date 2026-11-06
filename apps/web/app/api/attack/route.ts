@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { REASON_TEXT, codesOf, evaluate, type EvalContext } from "@zowall/gate-core";
 import { parseIntent } from "@zowall/agent";
 
-import { purchaseOrders } from "@/lib/store";
 
 /**
  * Runs the naive agent against the gate.
@@ -61,7 +60,6 @@ export async function POST(request: Request) {
     codes: decision.codes,
     explanation: decision.codes.map((c) => REASON_TEXT[c]).join(" "),
     reasonMask: decision.reasonMask,
-    knownPOs: purchaseOrders.all().length,
     evaluatedBy: "gate-core (same rules as the contract)",
     allCodes: codesOf(decision.reasonMask),
   });

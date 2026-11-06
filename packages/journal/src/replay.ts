@@ -49,6 +49,10 @@ export type EvmDecision = {
   journalDigest: Bytes32;
   txHash: string;
   blockNumber: number;
+  /** USDT base units moved by this decision; 0 unless it paid. */
+  paid?: bigint;
+  /** hold created by this decision, 0 when it did not park one. */
+  holdId?: bigint;
 };
 
 /**
