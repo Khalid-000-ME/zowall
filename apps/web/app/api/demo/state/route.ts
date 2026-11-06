@@ -1,6 +1,6 @@
 import { formatUsdt } from "@zowall/gate-core";
 
-import { getVault } from "@/lib/chain";
+import { getOpenHolds, getPOs, getVault } from "@/lib/chain";
 import { handle } from "@/lib/demo-http";
 import { serverEnv } from "@/lib/env";
 import { humans } from "@/lib/humans";
@@ -20,6 +20,13 @@ export async function GET(request: Request) {
 
     const vault = env.gateAddress ? await getVault().catch(() => null) : null;
 
+    // Where the walkthrough left off, so a refreshed page can carry on rather
+    // than start a new order.
+    const pos = env.gateAddress ? await getPOs().catch(() => []) : [];
+    const open = pos.find((p) => p.status === "Open") ?? null;
+    const holds = env.gateAddress ? await getOpenHolds().catch(() => []) : [];
+    const hold = open ? (holds.find((h) => h.poId === open.id) ?? null) : null;
+
     return {
       enabled: env.demoEnabled && missing.length === 0,
       switchedOff: !env.demoEnabled,
@@ -27,7 +34,20 @@ export async function GET(request: Request) {
       chainId: env.chainId,
       gate: env.gateAddress,
       topic: env.hederaTopicId,
-      humans: humans().map((h) => ({ key: h.key, name: h.name, enrolled: h.enrolled })),
+      humans: humans().map((h) => ({
+        key: h.key,
+        name: h.name,
+        enrolled: h.enrolled,
+        personId: h.personId,
+      })),
+      current: open
+        ? {
+            poId: open.id.toString(),
+            received: open.received.toString(),
+            invoiced: open.invoicedQty.toString(),
+            holdId: hold ? hold.id.toString() : null,
+          }
+        : null,
       vault: vault
         ? {
             balance: vault.balance.toString(),

@@ -3,34 +3,47 @@
 import { useState } from "react";
 
 import { OutcomeBadge } from "@/components/Outcome";
+import { ResultCard } from "@/components/ResultCard";
+import type { StepResult } from "@/lib/demo";
 
 type Sample = { label: string; text: string };
 
 type Attempt = {
   narration: string;
+  result?: StepResult;
   outcome?: "PAID" | "HELD" | "REJECTED";
   codes?: string[];
   explanation?: string;
-  txHash?: string;
+  evaluatedBy?: string;
 };
 
-export function AttackConsole({ samples }: { samples: Sample[] }) {
+export function AttackConsole({
+  samples,
+  topicUrl,
+}: {
+  samples: Sample[];
+  topicUrl: string | null;
+}) {
   const [text, setText] = useState(samples[0]?.text ?? "");
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function submit() {
     setRunning(true);
     setAttempt(null);
+    setError(null);
     try {
       const res = await fetch("/api/attack", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ text }),
       });
-      setAttempt((await res.json()) as Attempt);
+      const data = (await res.json()) as Attempt & { ok: boolean; error?: string };
+      if (!data.ok) setError(data.error ?? "the console could not reach the gate");
+      else setAttempt(data);
     } catch (err) {
-      setAttempt({ narration: `The console could not reach the gate: ${String(err)}` });
+      setError(`The console could not reach the gate: ${String(err)}`);
     } finally {
       setRunning(false);
     }
@@ -95,23 +108,29 @@ export function AttackConsole({ samples }: { samples: Sample[] }) {
         {running ? "Agent is trying…" : "Let the agent try"}
       </button>
 
+      {error ? (
+        <p style={{ color: "var(--rejected)", margin: 0 }}>{error}</p>
+      ) : null}
+
       {attempt ? (
-        <div
-          style={{
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius)",
-            padding: "var(--space-4)",
-            background: "var(--surface)",
-            display: "grid",
-            gap: "var(--space-3)",
-          }}
-        >
+        <div style={{ display: "grid", gap: "var(--space-3)" }}>
           <p style={{ margin: 0, color: "var(--text-muted)", fontStyle: "italic" }}>
             {attempt.narration}
           </p>
 
-          {attempt.outcome ? (
-            <>
+          {attempt.result ? (
+            <ResultCard result={attempt.result} names={{}} topicUrl={topicUrl} />
+          ) : attempt.outcome ? (
+            <div
+              style={{
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius)",
+                padding: "var(--space-4)",
+                background: "var(--surface)",
+                display: "grid",
+                gap: "var(--space-3)",
+              }}
+            >
               <OutcomeBadge outcome={attempt.outcome} large />
               {attempt.codes && attempt.codes.length > 0 ? (
                 <p className="mono" style={{ margin: 0 }}>
@@ -119,7 +138,10 @@ export function AttackConsole({ samples }: { samples: Sample[] }) {
                 </p>
               ) : null}
               <p style={{ margin: 0 }}>{attempt.explanation}</p>
-            </>
+              <p style={{ margin: 0, fontSize: 13, color: "var(--text-faint)" }}>
+                {attempt.evaluatedBy}
+              </p>
+            </div>
           ) : null}
         </div>
       ) : null}

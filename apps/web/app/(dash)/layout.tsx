@@ -8,6 +8,7 @@ import { Wordmark } from "@/components/Logo";
  * what someone working through an exception queue actually wants.
  */
 const NAV = [
+  { href: "/walkthrough", label: "Walkthrough" },
   { href: "/po", label: "Purchase orders" },
   { href: "/holds", label: "Holds" },
   { href: "/journal", label: "Journal" },

@@ -36,7 +36,7 @@ export default async function PurchaseOrdersPage() {
       >
         <h1 style={{ fontSize: 30 }}>Purchase orders</h1>
         <Link
-          href="/attack"
+          href="/walkthrough"
           style={{
             background: "var(--accent)",
             color: "var(--accent-text)",
@@ -46,7 +46,7 @@ export default async function PurchaseOrdersPage() {
             fontSize: 14,
           }}
         >
-          Try to break it
+          Walk through it
         </Link>
       </div>
 

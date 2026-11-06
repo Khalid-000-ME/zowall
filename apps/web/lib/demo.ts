@@ -137,6 +137,8 @@ export type StepResult = {
   decision?: DecisionSummary;
   poId?: string;
   holdId?: string;
+  /** USDT paid by a hold resolution, base units */
+  paid?: string;
   /** extra reservation an override drew from free balance */
   amended?: string;
   /** set when the contract refused the action */
@@ -254,6 +256,7 @@ async function summarise(c: Ctx, hash: `0x${string}`): Promise<Journalled> {
     }
 
     if (ev.eventName === "HoldResolved") {
+      result.paid = ev.args.paid.toString();
       result.amended = ev.args.amended.toString();
       const hold = await getHold(ev.args.holdId);
       journal.push({
