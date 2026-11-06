@@ -107,6 +107,9 @@ const options = (entries: DecisionEntry[], evm: EvmDecision | null = chainDecisi
   chainId: CHAIN,
   gateAddress: GATE,
   fetchImpl: fakeMirror(entries),
+  // The fake mirror serves messages for every URL, so it cannot answer a topic-info
+  // request. Topic settings have their own tests below.
+  checkTopic: false,
   evmSource: () => (evm ? { ...evm, journalDigest: trueDigest() } : null),
 });
 
@@ -114,7 +117,7 @@ test("a journal that matches the chain replays OK", async () => {
   const report = await replay("0.0.999", options([entry()]));
   assert.equal(report.ok, true, JSON.stringify(report.findings));
   assert.equal(report.decisions, 1);
-  assert.equal(report.findings[0]?.kind, "ok");
+  assert.ok(report.findings.some((f) => f.kind === "ok"));
 });
 
 test("editing the digest in the journal is caught", async () => {
@@ -200,6 +203,7 @@ test("one invoice decided twice gives two distinct entries, not one", async () =
     chainId: CHAIN,
     gateAddress: GATE,
     fetchImpl: fakeMirror(entries),
+    checkTopic: false,
     evmSource: (ref) => byTx.get(ref.txHash) ?? null,
   });
 
@@ -248,13 +252,155 @@ test("junk another account submitted to the public topic is skipped, not fatal",
     chainId: CHAIN,
     gateAddress: GATE,
     fetchImpl,
+    checkTopic: false,
   });
   assert.equal(report.ok, true);
-  assert.equal(report.findings[0]?.kind, "skipped");
+  assert.ok(report.findings.some((f) => f.kind === "skipped"));
 });
 
 test("an entry that would need chunking is refused at write time", () => {
   const huge = entry({ inv: `0x${"ab".repeat(600)}` as Bytes32 });
   assert.throws(() => serialize(huge), /over the 1024-byte HCS limit/);
   assert.ok(serialize(entry()).length < MAX_HCS_MESSAGE_BYTES);
+});
+
+/* ------------------------------------------- the ledger record itself -- */
+
+import { checkLedger } from "../src/replay.ts";
+
+const msg = (seq: number, ts: string, payer = "0.0.6503308", chunk: unknown = null): MirrorMessage => ({
+  chunk_info: chunk,
+  consensus_timestamp: ts,
+  message: "",
+  payer_account_id: payer,
+  running_hash: "",
+  running_hash_version: 3,
+  sequence_number: seq,
+  topic_id: "0.0.999",
+});
+
+test("a topic with contiguous sequence numbers and rising times is clean", () => {
+  const f = checkLedger([msg(1, "10.000000001"), msg(2, "10.000000002"), msg(3, "11.000000000")]);
+  assert.deepEqual(f.map((x) => x.kind), ["ledger_ok"]);
+});
+
+test("a dropped message shows up as a gap in the sequence", () => {
+  const f = checkLedger([msg(1, "10.000000001"), msg(3, "10.000000003")]);
+  assert.ok(f.some((x) => x.kind === "sequence_gap" && x.expected === 2 && x.found === 3));
+});
+
+test("a topic read from the middle is not mistaken for a whole one", () => {
+  const f = checkLedger([msg(5, "10.000000005")]);
+  assert.ok(f.some((x) => x.kind === "sequence_gap" && x.expected === 1));
+});
+
+test("a reordered message is caught by its consensus time", () => {
+  const f = checkLedger([msg(1, "10.000000009"), msg(2, "10.000000002")]);
+  assert.ok(f.some((x) => x.kind === "time_not_increasing" && x.seq === 2));
+});
+
+test("a message paid for by anyone else was submitted by someone else", () => {
+  const f = checkLedger([msg(1, "10.000000001"), msg(2, "10.000000002", "0.0.42")], "0.0.6503308");
+  assert.ok(f.some((x) => x.kind === "foreign_payer" && x.seq === 2 && x.payer === "0.0.42"));
+});
+
+test("without an expected payer the payer is not judged", () => {
+  const f = checkLedger([msg(1, "10.000000001", "0.0.42")]);
+  assert.deepEqual(f.map((x) => x.kind), ["ledger_ok"]);
+});
+
+test("an unchunked message is not flagged, though the mirror still reports chunk info for it", () => {
+  const f = checkLedger([msg(1, "10.000000001", "0.0.6503308", { number: 1, total: 1 })]);
+  assert.deepEqual(f.map((x) => x.kind), ["ledger_ok"]);
+});
+
+test("a chunked message is flagged, because this journal never chunks", () => {
+  const f = checkLedger([msg(1, "10.000000001", "0.0.6503308", { number: 1, total: 2 })]);
+  assert.ok(f.some((x) => x.kind === "chunked"));
+});
+
+/* ------------------------------------------------------ the topic itself -- */
+
+function topicFetch(info: Record<string, unknown>): typeof fetch {
+  return (async (url: string) =>
+    String(url).includes("/messages")
+      ? new Response(JSON.stringify({ messages: [], links: { next: null } }), { status: 200 })
+      : new Response(JSON.stringify(info), { status: 200 })) as unknown as typeof fetch;
+}
+
+const GOOD_MEMO = `zowall journal v2 chain=${CHAIN} gate=${GATE.toLowerCase()}`;
+const topicOptions = (info: Record<string, unknown>) => ({
+  keccak256: hash,
+  chainId: CHAIN,
+  gateAddress: GATE,
+  fetchImpl: topicFetch(info),
+});
+
+test("a closed, immutable topic that names this gate passes", async () => {
+  const r = await replay("0.0.999", topicOptions({ memo: GOOD_MEMO, admin_key: null, submit_key: { key: "ab" }, auto_renew_account: "0.0.1" }));
+  assert.equal(r.ok, true, JSON.stringify(r.findings));
+});
+
+test("a topic anyone can write to is refused", async () => {
+  const r = await replay("0.0.999", topicOptions({ memo: GOOD_MEMO, admin_key: null, submit_key: null }));
+  assert.equal(r.ok, false);
+  assert.ok(r.findings.some((f) => f.kind === "topic_open"));
+});
+
+test("a topic that still has an admin key is refused", async () => {
+  const r = await replay("0.0.999", topicOptions({ memo: GOOD_MEMO, admin_key: { key: "ab" }, submit_key: { key: "cd" } }));
+  assert.equal(r.ok, false);
+  assert.ok(r.findings.some((f) => f.kind === "topic_mutable"));
+});
+
+test("a topic whose memo names a different gate is not this journal", async () => {
+  const r = await replay("0.0.999", topicOptions({ memo: "zowall journal v2 chain=1874 gate=0xdeadbeef", admin_key: null, submit_key: { key: "cd" } }));
+  assert.equal(r.ok, false);
+  assert.ok(r.findings.some((f) => f.kind === "topic_memo"));
+});
+
+/* ----------------------------------------------------- reading the mirror -- */
+
+import { readTopic } from "../src/mirror.ts";
+
+test("a mirror that answers 503 twice is retried and then read", async () => {
+  let calls = 0;
+  const fetchImpl = (async () => {
+    calls += 1;
+    return calls < 3
+      ? new Response("busy", { status: 503 })
+      : new Response(JSON.stringify({ messages: [msg(1, "10.000000001")], links: { next: null } }), { status: 200 });
+  }) as unknown as typeof fetch;
+
+  const out = await readTopic("0.0.999", { fetchImpl, retries: 4 });
+  assert.equal(out.length, 1);
+  assert.equal(calls, 3);
+});
+
+test("a dead mirror falls through to the next, read from the start", async () => {
+  const fetchImpl = (async (url: string) =>
+    String(url).startsWith("https://dead")
+      ? new Response("down", { status: 502 })
+      : new Response(JSON.stringify({ messages: [msg(1, "10.000000001")], links: { next: null } }), {
+          status: 200,
+        })) as unknown as typeof fetch;
+
+  const out = await readTopic("0.0.999", {
+    mirrorUrl: "https://dead.example",
+    fallbackMirrors: ["https://alive.example"],
+    fetchImpl,
+    retries: 1,
+  });
+  assert.equal(out.length, 1);
+});
+
+test("a 404 is not retried, because asking again will not change it", async () => {
+  let calls = 0;
+  const fetchImpl = (async () => {
+    calls += 1;
+    return new Response("no such topic", { status: 404 });
+  }) as unknown as typeof fetch;
+
+  await assert.rejects(readTopic("0.0.999", { fetchImpl, retries: 4 }), /404/);
+  assert.equal(calls, 1);
 });

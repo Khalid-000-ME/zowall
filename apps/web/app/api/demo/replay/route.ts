@@ -30,6 +30,8 @@ export async function POST(request: Request) {
       chainId: env.chainId,
       gateAddress: env.gateAddress,
       evmSource: source,
+      // Anything paid for by another account was submitted by someone else.
+      ...(env.hederaAccountId ? { expectedPayer: env.hederaAccountId } : {}),
     });
 
     return { report, chainDecisions: count };

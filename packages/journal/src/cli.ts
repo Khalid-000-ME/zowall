@@ -16,6 +16,7 @@ import { formatReport, replay } from "./replay.ts";
 
 const USAGE = `usage:
   journal replay <topicId> [--gate <address>] [--rpc <url>] [--chain <id>] [--mirror <url>]
+                 [--fallback <url,url>] [--payer <accountId>]
   journal tail <topicId> [--limit <n>]
   journal create-topic [--gate <address>] [--chain <id>]
 `;
@@ -68,6 +69,11 @@ async function main(): Promise<number> {
       chainId: Number(flag(rest, "chain") ?? process.env["EVM_CHAIN_ID"] ?? 1874),
       gateAddress: (gateAddress || "0x0000000000000000000000000000000000000000") as `0x${string}`,
       ...(flag(rest, "mirror") ? { mirrorUrl: flag(rest, "mirror") as string } : {}),
+      ...(flag(rest, "fallback") ? { fallbackMirrors: (flag(rest, "fallback") as string).split(",") } : {}),
+      // Anything paid for by another account was submitted by someone else.
+      ...(flag(rest, "payer") ?? process.env["HEDERA_ACCOUNT_ID"]
+        ? { expectedPayer: (flag(rest, "payer") ?? process.env["HEDERA_ACCOUNT_ID"]) as string }
+        : {}),
       ...(evmSource ? { evmSource } : {}),
     });
 
