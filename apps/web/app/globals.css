@@ -192,20 +192,94 @@ a {
   }
 }
 
-/* ---------------------------------------------------------------------------
-   Landing hero
-   The one dark surface in the product. Its colours are literals rather than
-   tokens on purpose: the band stays dark in both themes, so a token that flips
-   with the colour scheme would make the art unreadable in light mode.
-   --------------------------------------------------------------------------- */
+/* ===========================================================================
+   The landing page
+   ---------------------------------------------------------------------------
+   A dark surface of its own, matching the palette carried across these
+   projects: a near-black navy canvas, one blue accent, and type that is large
+   and quiet rather than loud. The values are literals rather than the app
+   tokens on purpose - this page stays dark in both colour schemes, and a token
+   that flipped with the scheme would leave white glyphs on a white field.
+
+   Scoped under .land so none of it reaches the workspace, which is light by
+   design and should stay that way.
+   =========================================================================== */
+.land {
+  --canvas: #030712;
+  --ink: #f4f6fb;
+  --mute: #8b93a7;
+  --card: #0f1524;
+  --line: #232b3c;
+  --blue: #60a5fa;
+
+  color-scheme: dark;
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+.land ::selection {
+  background: var(--ink);
+  color: var(--canvas);
+}
+
+/* Fala sets everything in one grotesk. The serif belongs to the explainer, so
+   every heading on this page is switched to the UI face. */
+.land h1,
+.land h2,
+.land h3,
+.hero-sub,
+.land-wordmark {
+  font-family: var(--font-ui), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 400;
+}
+
+/* ---------------------------------------------------------------- the art -- */
+
+.ascii-shape {
+  margin: 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 7px;
+  line-height: 8px;
+  color: var(--ink);
+  user-select: none;
+  overflow: hidden;
+  white-space: pre;
+}
+
+@media (min-width: 640px) {
+  .ascii-shape {
+    font-size: 8px;
+    line-height: 9px;
+  }
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 700ms ease-out, transform 700ms ease-out;
+}
+
+.reveal-in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* --------------------------------------------------------------- the hero -- */
+
 .hero {
   position: relative;
   min-height: 94dvh;
   display: grid;
   align-content: center;
   overflow: hidden;
-  background: #0b0a09;
-  color: #f4f1ea;
   isolation: isolate;
 }
 
@@ -222,10 +296,10 @@ a {
   position: absolute;
   inset: 0;
   background: radial-gradient(
-    ellipse 60% 70% at 22% 50%,
-    rgba(11, 10, 9, 0.9) 0%,
-    rgba(11, 10, 9, 0.62) 42%,
-    rgba(11, 10, 9, 0.12) 100%
+    ellipse 60% 70% at 24% 50%,
+    rgba(3, 7, 18, 0.92) 0%,
+    rgba(3, 7, 18, 0.64) 42%,
+    rgba(3, 7, 18, 0.1) 100%
   );
 }
 
@@ -236,63 +310,69 @@ a {
 
 .hero-eyebrow {
   margin: 0;
-  font-size: 15px;
-  color: rgba(244, 241, 234, 0.6);
+  font-size: 12.5px;
+  letter-spacing: -0.01em;
+  color: var(--mute);
 }
 
 .hero-title {
-  font-size: clamp(2.6rem, 8vw, 5rem);
-  line-height: 1.05;
+  font-size: clamp(2.75rem, 7vw, 5.5rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
   margin: var(--space-4) 0 var(--space-3);
-  max-width: 22ch;
-  color: #f4f1ea;
+  max-width: 18ch;
+  color: var(--ink);
 }
 
 .hero-sub {
   font-family: var(--font-display), Georgia, serif;
   font-size: clamp(1.1rem, 2.6vw, 1.6rem);
-  color: rgba(244, 241, 234, 0.72);
+  color: var(--mute);
   margin: 0 0 var(--space-4);
 }
 
 .hero-lede {
-  color: rgba(244, 241, 234, 0.64);
-  max-width: var(--measure);
+  color: var(--mute);
+  max-width: 34rem;
   font-size: 17px;
+  line-height: 1.6;
   margin-top: 0;
 }
 
 .hero-actions {
   display: flex;
   gap: var(--space-3);
-  margin-top: var(--space-5);
+  margin-top: var(--space-6);
   flex-wrap: wrap;
 }
 
 .hero-btn {
-  padding: 12px 22px;
-  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 20px;
+  border-radius: 12px;
   text-decoration: none;
-  font-size: 16px;
-  transition: background 160ms ease-out, border-color 160ms ease-out;
+  font-size: 14px;
+  transition: opacity 160ms ease-out, background 160ms ease-out, border-color 160ms ease-out;
 }
 
 .hero-btn-primary {
-  background: #f4f1ea;
-  color: #0b0a09;
+  background: var(--ink);
+  color: var(--canvas);
 }
 
 .hero-btn-primary:hover {
-  background: #ffffff;
+  opacity: 0.85;
 }
 
 .hero-btn-ghost {
-  border: 1px solid rgba(244, 241, 234, 0.3);
-  color: #f4f1ea;
+  border: 1px solid var(--line);
+  color: var(--ink);
 }
 
 .hero-btn-ghost:hover {
-  border-color: rgba(244, 241, 234, 0.6);
+  background: var(--card);
 }
 
 .hero-brands {
@@ -304,19 +384,202 @@ a {
 }
 
 .hero-brand-label {
-  font-size: 12px;
-  letter-spacing: 0.08em;
+  font-size: 11px;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: rgba(244, 241, 234, 0.4);
+  color: var(--mute);
 }
 
 .hero-brands img {
   display: block;
-  opacity: 0.75;
+  opacity: 0.7;
   transition: opacity 160ms ease-out;
 }
 
 .hero-brands a:hover img,
 .hero-brands a:focus-visible img {
   opacity: 1;
+}
+
+/* ------------------------------------------------------------ the sections -- */
+
+.land-section {
+  width: min(var(--page), calc(100% - 2rem));
+  margin-inline: auto;
+  padding-block: var(--space-8);
+}
+
+.land-split {
+  display: grid;
+  gap: var(--space-7);
+  align-items: center;
+}
+
+@media (min-width: 900px) {
+  .land-split {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.land-h2 {
+  font-size: clamp(2rem, 4.6vw, 3.4rem);
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+  max-width: 18ch;
+}
+
+.land-lede {
+  max-width: 36rem;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--mute);
+  margin: var(--space-5) 0 0;
+}
+
+.land-art {
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .land-art-first {
+    order: -1;
+  }
+}
+
+/* ---------------------------------------------------------------- cards -- */
+
+.land-cards {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (min-width: 820px) {
+  .land-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.land-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 20px;
+  background: var(--card);
+  transition: transform 300ms ease-out;
+}
+
+.land-card:hover {
+  transform: translateY(-4px);
+}
+
+.land-card-art {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 15rem;
+  overflow: hidden;
+}
+
+.land-card-body {
+  padding: 0 28px 28px;
+}
+
+.land-card-title {
+  font-size: 22px;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+}
+
+.land-card-text {
+  margin: var(--space-2) 0 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--mute);
+}
+
+/* -------------------------------------------------------- the rules table -- */
+
+.land-codes {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+@media (min-width: 720px) {
+  .land-codes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.land-code-group {
+  border-radius: 20px;
+  background: var(--card);
+  padding: 28px;
+}
+
+.land-code-group h3 {
+  font-family: var(--font-body), ui-sans-serif, sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-4);
+}
+
+.land-code-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.land-code-list li {
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.land-code-list .mono {
+  display: block;
+  font-size: 11.5px;
+  color: var(--mute);
+  margin-bottom: 2px;
+}
+
+/* --------------------------------------------------------------- footer -- */
+
+.land-footer {
+  border-top: 1px solid var(--line);
+  margin-top: var(--space-7);
+  padding-block: var(--space-6);
+}
+
+.land-wordmark {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(3rem, 14vw, 8rem);
+  line-height: 0.9;
+  color: var(--line);
+  margin: 0;
+}
+
+.land-links {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  font-size: 14px;
+  margin-top: var(--space-4);
+  color: var(--mute);
+}
+
+.land-links a {
+  text-decoration: none;
+  transition: color 160ms ease-out;
+}
+
+.land-links a:hover {
+  color: var(--ink);
 }

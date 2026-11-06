@@ -16,9 +16,8 @@ const LINKS = [
  * past it, a bar fades in, detached from the top edge and inset from the
  * sides, so it reads as its own floating element.
  *
- * `overDark` is for pages whose hero is the dark ASCII band: the links have to
- * invert while the bar is invisible, or they are ink on ink. Once the bar
- * appears it is on the page background again and the normal colours apply.
+ * `overDark` is for the landing page, which is dark end to end: the links stay
+ * light and the floating bar uses the dark canvas, in both colour schemes.
  */
 export function SiteNav({ overDark = false }: { overDark?: boolean }) {
   const [scrolled, setScrolled] = useState(false);
@@ -40,7 +39,7 @@ export function SiteNav({ overDark = false }: { overDark?: boolean }) {
         justifyContent: "center",
         paddingTop: scrolled ? 12 : 24,
         transition: "padding 300ms ease-out",
-        color: overDark && !scrolled ? "#f4f1ea" : "var(--text)",
+        color: overDark ? "#f4f6fb" : "var(--text)",
       }}
     >
       <nav
@@ -53,8 +52,12 @@ export function SiteNav({ overDark = false }: { overDark?: boolean }) {
           padding: "12px 20px",
           // rounded-2xl reads as a floating bar; a full capsule would be wrong
           borderRadius: 16,
-          border: `1px solid ${scrolled ? "var(--border)" : "transparent"}`,
-          background: scrolled ? "color-mix(in srgb, var(--bg) 78%, transparent)" : "transparent",
+          border: `1px solid ${scrolled ? (overDark ? "#232b3c" : "var(--border)") : "transparent"}`,
+          background: scrolled
+            ? overDark
+              ? "rgba(3, 7, 18, 0.72)"
+              : "color-mix(in srgb, var(--bg) 78%, transparent)"
+            : "transparent",
           backdropFilter: scrolled ? "blur(16px)" : "none",
           boxShadow: scrolled ? "0 1px 2px rgba(0,0,0,0.04)" : "none",
           transition: "background 300ms ease-out, border-color 300ms ease-out",

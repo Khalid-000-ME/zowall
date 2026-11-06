@@ -9,12 +9,10 @@ import GradientASCII from "@/components/reactbits/GradientASCII";
  *
  * The art is the react-bits GradientASCII (JS-CSS) running the same `rise`
  * variation the Fala landing uses - same shape, glyph ramp, cell size and
- * density - with Zowall's ink-to-cream palette instead of Fala's blues, so
- * the two projects do not look like the same site.
+ * density - and the same blue ramp.
  *
- * It is a dark band in an otherwise light app. That is deliberate: it is the
- * only place in the product where decoration is the point, and the contrast
- * is what makes the dashboards that follow read as quiet.
+ * Colours are the navy-and-blue palette used across these projects, so the
+ * page reads as one family. The workspace behind /app stays light on purpose.
  */
 const BRANDS = [
   { name: "Whitechain", href: "https://whitechain.io", src: "/brands/whitechain-dark.png", height: 22 },
@@ -27,12 +25,11 @@ export function Hero({ tagline, taglineTech }: { tagline: string; taglineTech: s
     <section className="hero">
       <div className="hero-art" aria-hidden="true">
         <GradientASCII
-          colors={["#3a2a12", "#9a6a16", "#d9a94a", "#f6ead0"]}
+          colors={["#0b1f6b", "#1e3fd8", "#2f6bff", "#7db4ff"]}
           shape="rise"
           characters=" =+xX0S8#@"
           cellSize={18}
           density={0.8}
-          glow={0.35}
         />
         <div className="hero-dim" />
       </div>
