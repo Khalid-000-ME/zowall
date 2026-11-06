@@ -22,7 +22,7 @@ moves. It parses documents and proposes. A deterministic contract disposes.
 |---|---|
 | Network | Whitechain Sepolia (chain id **1874**) |
 | `ZowallGate` | [`0x1fcb96e5e1a092bab2376517036113beb3cc9c5a`](https://explorer.testnet.whitechain.io/address/0x1fcb96e5e1a092bab2376517036113beb3cc9c5a) — **verified** |
-| Hedera journal topic | [`0.0.11326973`](https://hashscan.io/testnet/topic/0.0.11326973) |
+| Hedera journal topic | [`0.0.11335431`](https://hashscan.io/testnet/topic/0.0.11335431) |
 | USDT (6 dp) | [`0xcedfB56113143d55b2358b8CFbB0dEB5Ad2f55a7`](https://explorer.testnet.whitechain.io/address/0xcedfB56113143d55b2358b8CFbB0dEB5Ad2f55a7) |
 | Attestor | `0xdCa82154FA9f7a95277729e9a6861f4E023ab997` |
 
@@ -31,21 +31,21 @@ transaction anyone can open:
 
 | Outcome | Transaction |
 |---|---|
-| **PAID** 2.00 USDT | [`0x6d96e1a9…`](https://explorer.testnet.whitechain.io/tx/0x6d96e1a9be72822e4a9bea7d23ce1144de8f3b1e585fe92428fea7c5e6f26556) |
-| `REJECTED NO_PO` | [`0x995a0979…`](https://explorer.testnet.whitechain.io/tx/0x995a097955c6145ee18586f71ebecef11559082e106b39f04880b4c68594b231) |
-| `REJECTED PAYEE_MISMATCH` | [`0x85078ec5…`](https://explorer.testnet.whitechain.io/tx/0x85078ec5f00f6b4fca2a290cf08fbe64b6803556089ad6e0546de941e660ab44) |
-| `REJECTED DUPLICATE_INVOICE` | [`0xa785ef6d…`](https://explorer.testnet.whitechain.io/tx/0xa785ef6d3f8dca2b8650d07fc6031f4bdea499a1bacd76a1112538967f337243) |
+| **PAID** 2.00 USDT | [`0xa22aa4ec…`](https://explorer.testnet.whitechain.io/tx/0xa22aa4ec943d977d3b7d78b246f4266663f18abd374616168c3a37ec690a3b4a) |
+| `REJECTED NO_PO` | [`0xc9b2fa41…`](https://explorer.testnet.whitechain.io/tx/0xc9b2fa4135a086eb90936fedb722c96e8a69c6a8998785a29e416496f7105c6e) |
+| `REJECTED PAYEE_MISMATCH` | [`0x983cbcc0…`](https://explorer.testnet.whitechain.io/tx/0x983cbcc0ea16e7cf58ab243e7584957a9d2b13e0dc39ccecb092ab7530deda68) |
+| `REJECTED DUPLICATE_INVOICE` | [`0xedad25c3…`](https://explorer.testnet.whitechain.io/tx/0xedad25c31250805384ebdac02a15f42f4f9a2aa64719d0139a1944ec210c358b) |
 
 All four are on the Hedera topic, and the replay recomputes every digest from
 the chain's own logs:
 
 ```
-$ node packages/journal/src/cli.ts replay 0.0.11326973
+$ node packages/journal/src/cli.ts replay 0.0.11335431 --gate 0x1fcb96e5e1a092bab2376517036113beb3cc9c5a
 
-  OK    #1  REJECTED po#0 NO_PO · digest recomputed and matched
-  OK    #2  REJECTED po#1 PAYEE_MISMATCH · digest recomputed and matched
-  OK    #3  PAID po#1 clean · digest recomputed and matched
-  OK    #4  REJECTED po#1 DUPLICATE_INVOICE · digest recomputed and matched
+  OK    #17  REJECTED po#0 NO_PO · digest recomputed and matched
+  OK    #18  REJECTED po#7 PAYEE_MISMATCH · digest recomputed and matched
+  OK    #19  PAID po#7 clean · digest recomputed and matched
+  OK    #20  REJECTED po#7 DUPLICATE_INVOICE · digest recomputed and matched
 
 OK - journal and chain agree
 ```
@@ -53,7 +53,7 @@ OK - journal and chain agree
 Verify any single decision from its log alone, with nothing supplied by us:
 
 ```bash
-node packages/e2e/src/verify-decision.ts 0x6d96e1a9be72822e4a9bea7d23ce1144de8f3b1e585fe92428fea7c5e6f26556
+node packages/e2e/src/verify-decision.ts 0xa22aa4ec943d977d3b7d78b246f4266663f18abd374616168c3a37ec690a3b4a
 ```
 
 Reproduce all four:
