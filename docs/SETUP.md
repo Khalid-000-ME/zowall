@@ -14,20 +14,30 @@ Requires Node 24+, pnpm 10+ and Foundry.
 
 ## 1. Whitechain Sepolia keys
 
-Two keys, both generated locally:
+A deployer key, a vendor key, and a **quorum** of attestor keys, all generated
+locally:
 
 | Variable | Role | Needs funding |
 |---|---|---|
 | `PRIVATE_KEY` | Deploys the gate and holds the buyer treasury | WBT for gas, and USDT for the vault |
-| `ATTESTOR_PRIVATE_KEY` | Signs EIP-712 role attestations after a World proof verifies | no, it only signs |
+| `ATTESTOR_PRIVATE_KEYS` | Comma-separated. Each signs EIP-712 role attestations after verifying a World proof | no, they only sign |
+| `ATTESTOR_ADDRESSES` | Their public addresses, comma-separated, passed to the constructor | no |
+| `ATTESTOR_THRESHOLD` | How many must sign each attestation. Default 2 | no |
 
 ```bash
 cast wallet new    # once per key
 ```
 
-`ATTESTOR_ADDRESS` is the attestor key's public address and is passed to the
-constructor. The attestor key must stay server-side: anything holding it can
-mint a verified human.
+The gate accepts a role attestation only when `ATTESTOR_THRESHOLD` of the
+attestors signed it, so one stolen key cannot mint a verified human. The
+constructor refuses a threshold of zero, one that cannot be met, a duplicate
+address and the zero address, because none of those can be fixed after
+deployment. In production each attestor is a separate service; the demo runs them
+in one process, which the contract does not care about.
+
+Each attestation also commits to the exact action it authorises (the order terms,
+the quantity received, the hold and its verdict), so one copied out of the mempool
+cannot be reused for different arguments.
 
 Fund the deployer with WBT for gas from the Whitechain testnet faucet, and with
 USDT from whatever testnet source you have. The vault settles in the real
@@ -66,8 +76,8 @@ forge verify-contract $GATE_ADDRESS src/ZowallGate.sol:ZowallGate \
   --rpc-url https://rpc.testnet.whitechain.io/ \
   --verifier blockscout \
   --verifier-url https://explorer.testnet.whitechain.io/api/ \
-  --constructor-args $(cast abi-encode "constructor(address,address)" \
-    $USDT_ADDRESS $ATTESTOR_ADDRESS) --watch
+  --constructor-args $(cast abi-encode "constructor(address,address[],uint8)" \
+    $USDT_ADDRESS "[$ATTESTOR_ADDRESSES]" $ATTESTOR_THRESHOLD) --watch
 ```
 
 Two traps:
@@ -87,7 +97,9 @@ cast send $USDT_ADDRESS "transfer(address,uint256)" $GATE_ADDRESS <amount> \
 reservation, and a vendor's reason to trust an encumbrance is that nobody can
 take it back. The cost is that redeploying strands the old vault, so drain it
 first with `packages/e2e/src/migrate.ts`, which moves the balance out through a
-real purchase order that pays out.
+real purchase order that pays out. It signs the old gate's single-attestor
+attestations with `OLD_ATTESTOR_PRIVATE_KEY`, and `MIGRATE_UNIT` sets the unit
+price so a balance below one whole USDT can be recovered in a second pass.
 
 ---
 
@@ -113,13 +125,26 @@ overrides.
 ## 4. Journal topic → `HEDERA_TOPIC_ID`, `HEDERA_SUBMIT_KEY`
 
 ```bash
-node packages/journal/src/cli.ts create-topic
+node packages/journal/src/cli.ts create-topic --gate $GATE_ADDRESS
 ```
 
-**Run this once.** The topic is created with a submit key and no admin key, so
-only this service can append and the topic is immutable and undeletable. That
-is deliberate — it is a stronger claim than "we could edit it but won't" — but
-it means a second run creates a second topic and orphans the first.
+**Run this once per gate.** The topic is created with every protection Hedera
+offers for this job:
+
+- a **submit key**, so only this service can append and a stranger cannot fill the
+  journal with noise;
+- **no admin key**, so the topic is immutable and undeletable. That is deliberate:
+  it is a stronger claim than "we could edit it but won't";
+- an **auto-renew account** (the operator) at the maximum period. An admin-less
+  topic would otherwise expire, and the account can only be named at creation;
+- a **memo** naming the chain and the gate, so anyone can check on the ledger whose
+  journal it is.
+
+A second run creates a second topic and orphans the first. `journal replay` checks
+all four and fails if any is missing.
+
+Custom topic fees (HIP-991) are not set: they charge strangers who may write, and
+here strangers may not write at all.
 
 ---
 
@@ -172,12 +197,50 @@ does not depend on how they are obtained.
 
 ---
 
-## 6. x402
+## 6. x402 and the guardian-protected payer
 
-`FACILITATOR_URL`, `X402_NETWORK`, `X402_ASSET` and `X402_PRICE` have working
-defaults for Hedera testnet. The **paying** account must associate the USDC
-token with a `TokenAssociateTransaction` first, or requests fail with
-`TOKEN_NOT_ASSOCIATED`.
+`FACILITATOR_URL` defaults to the official Hedera testnet facilitator,
+`https://x402.org/facilitator`, which needs no key. Its fee payer is read from
+`/supported` at request time. Alternatives that also need no key on testnet:
+`https://api.testnet.blocky402.com` and `https://testnet.facilitator.launa.dev`.
+
+The agent pays from an account whose key is a threshold structure, so the network
+itself refuses a payment the guardians have not signed. Create it once:
+
+```bash
+set -a; source .env.local; set +a
+node packages/x402/scripts/guardian-setup.ts
+```
+
+It creates a merchant account and the payer, proves against the live network that
+the agent alone, the agent plus one guardian, and the guardians without the agent
+are each refused with `INVALID_SIGNATURE`, then writes `X402_PAYER_ACCOUNT`,
+`X402_PAY_TO`, `X402_AGENT_KEY`, `X402_GUARDIAN_KEYS` and
+`X402_GUARDIAN_THRESHOLD` into `.env.local`. The keys are never printed.
+
+To take a guarded payment to the facilitator by hand, verify only or with
+settlement:
+
+```bash
+node packages/x402/scripts/facilitator-live.ts            # verify
+node packages/x402/scripts/facilitator-live.ts --settle   # and settle
+```
+
+An x402 **mandate** is an ordinary order on the gate whose description is the
+endpoint URL, whose payee is the merchant's account and whose quantity is the
+number of calls. Raise one from two verified people:
+
+```bash
+RESOURCE_URL=http://localhost:3000/api/x402/resource \
+  node packages/e2e/src/x402-mandate.ts
+```
+
+The mandate is matched by hashing the URL, so it is specific to the origin the
+agent is pointed at.
+
+The demo pays in HBAR (`asset` `0.0.0`, amounts in tinybars). To pay in HTS USDC
+instead, the payer must associate the token with a `TokenAssociateTransaction`
+first, or requests fail with `TOKEN_NOT_ASSOCIATED`.
 
 ---
 

@@ -35,7 +35,7 @@ treated as one is that there was nothing to compare it against.
 | x402 field | Invoice field |
 |---|---|
 | `payTo` | payee |
-| `maxAmountRequired` | unit price |
+| `amount` (v1: `maxAmountRequired`) | unit price |
 | `resource` | which mandate authorises this spend |
 | one call | one unit |
 
@@ -82,13 +82,59 @@ the mandate is created for N calls. That pre-authorised quantity is the receipt,
 which makes `QTY_OVER_RECEIVED` mean exactly "this agent has used up what a
 person agreed it could buy".
 
-## What this does not do
+## Not skippable: the payer's key does the enforcing
 
-An agent that removes the middleware is not gated by it, the same as any
-SDK-level control. The enforcement is at the integration point and the record is
-tamper-evident; neither is a claim that a hostile agent cannot route around its
-own client. Binding the wallet so that payment is impossible without a decision
-is the next step, not a property of this package today.
+A wrapper around `fetch` is a control the agent can simply not call. So on Hedera
+the guard is also written into the payer account's key, which the network
+evaluates on every transaction:
+
+```
+2 of [ agent key,  2 of [ guardian 1, guardian 2, guardian 3 ] ]
+```
+
+The account cannot move a tinybar unless the agent and a quorum of independent
+guardians signed the same transaction, and an x402 facilitator checks the
+signatures against that key before it sponsors a payment.
+
+```ts
+import { buildAgentSignedTransfer, createGuardian, guardianQuorum, toPayload }
+  from "@zowall/x402/hedera";
+
+signPayment: async (quote) => {
+  const tx = await buildAgentSignedTransfer({ client, requirements: quote, payer, agent });
+  const { bytes } = await guardianQuorum(tx, quote, guardians, 2);
+  return { payload: toPayload(bytes) };
+},
+```
+
+Each guardian trusts neither the caller nor the quote. It decodes the transaction,
+confirms it is a plain transfer that pays exactly the quoted amount to the quoted
+account in the quoted asset with the facilitator as fee payer and nobody else
+receiving anything, runs the mandate check itself, and only then signs.
+
+| Party | Alone |
+|---|---|
+| the agent | cannot pay |
+| one guardian | cannot pay |
+| a hacked middleware | cannot pay; it can lie about the quote, but the guardians read the bytes |
+| the agent and a guardian quorum | pay, after each guardian checked the bytes against the mandate |
+
+`guardianQuorum` routes around a guardian that refuses or is unreachable, so one
+bad guardian neither enables a payment nor blocks a good one.
+
+`scripts/guardian-setup.ts` creates such an account and shows the refusals against
+the live network. `scripts/facilitator-live.ts` takes a guarded payment to a real
+facilitator: the agent alone is refused with
+`invalid_exact_hedera_payload_signature_invalid`, the guarded payment verifies and
+settles.
+
+## Protocol versions
+
+It speaks x402 v2, which is what the Hedera facilitators run: a base64
+`PAYMENT-REQUIRED` header, `amount`, CAIP-2 networks such as `hedera:testnet`, a
+`PAYMENT-SIGNATURE` request header and a `PAYMENT-RESPONSE` reply. v1 (`X-PAYMENT`,
+`maxAmountRequired`) is still read. Either is normalised to one shape before the
+guard sees it, and the retry goes out in the header the server's version expects.
 
 ## Tests
 
@@ -96,6 +142,7 @@ is the next step, not a property of this package today.
 node --test packages/x402/test/*.test.ts
 ```
 
-Nineteen of them, and most are attacks: an unauthorised endpoint, a payee
+Thirty-seven of them, and most are attacks: an unauthorised endpoint, a payee
 swapped at quote time, a price raised after the fact, a replay, an exhausted
-allowance. A guard that only ever says yes is indistinguishable from no guard.
+allowance, a transaction that pays someone else, a middleware that lies to the
+guardians. A guard that only ever says yes is indistinguishable from no guard.

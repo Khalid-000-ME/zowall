@@ -27,39 +27,50 @@ wraps an agent's x402 payments so a machine payment faces the same checks.
 | | |
 |---|---|
 | Network | Whitechain Sepolia (chain id **1874**) |
-| `ZowallGate` | [`0x1fcb96e5e1a092bab2376517036113beb3cc9c5a`](https://explorer.testnet.whitechain.io/address/0x1fcb96e5e1a092bab2376517036113beb3cc9c5a) — source verified |
-| Hedera journal topic | [`0.0.11335431`](https://hashscan.io/testnet/topic/0.0.11335431) — submit key, no admin key |
+| `ZowallGate` | [`0x8ec88c90d675594ab969ed1180f8b887dfac1c71`](https://explorer.testnet.whitechain.io/address/0x8ec88c90d675594ab969ed1180f8b887dfac1c71) — source verified |
+| Attestors | a **2-of-3** quorum: [`0x4C47…3772`](https://explorer.testnet.whitechain.io/address/0x4C47292E79f736C34b901FCD39c09655511D3772), [`0x277E…78a5`](https://explorer.testnet.whitechain.io/address/0x277E65126409795c2dADB67A5b85E9d3b48378a5), [`0x3817…Ea1`](https://explorer.testnet.whitechain.io/address/0x38174E682131FA01c855357Ea1DedFA77d245Ea1) |
+| Hedera journal topic | [`0.0.11339027`](https://hashscan.io/testnet/topic/0.0.11339027) — submit key, no admin key, auto-renew, memo names the gate |
+| Guardian-protected payer | [`0.0.11338871`](https://hashscan.io/testnet/account/0.0.11338871) — key is the agent AND 2-of-3 guardians |
 | USDT (6 dp) | [`0xcedfB56113143d55b2358b8CFbB0dEB5Ad2f55a7`](https://explorer.testnet.whitechain.io/address/0xcedfB56113143d55b2358b8CFbB0dEB5Ad2f55a7) |
-| Attestor | `0xdCa82154FA9f7a95277729e9a6861f4E023ab997` |
 
 A real USDT payment settled through the main flow, and three refusals, each a
 transaction anyone can open:
 
 | Outcome | Transaction |
 |---|---|
-| **PAID** 2.00 USDT | [`0xa22aa4ec…`](https://explorer.testnet.whitechain.io/tx/0xa22aa4ec943d977d3b7d78b246f4266663f18abd374616168c3a37ec690a3b4a) |
-| `REJECTED NO_PO` | [`0xc9b2fa41…`](https://explorer.testnet.whitechain.io/tx/0xc9b2fa4135a086eb90936fedb722c96e8a69c6a8998785a29e416496f7105c6e) |
-| `REJECTED PAYEE_MISMATCH` | [`0x983cbcc0…`](https://explorer.testnet.whitechain.io/tx/0x983cbcc0ea16e7cf58ab243e7584957a9d2b13e0dc39ccecb092ab7530deda68) |
-| `REJECTED DUPLICATE_INVOICE` | [`0xedad25c3…`](https://explorer.testnet.whitechain.io/tx/0xedad25c31250805384ebdac02a15f42f4f9a2aa64719d0139a1944ec210c358b) |
+| **PAID** 2.00 USDT | [`0x56fb40d2…`](https://explorer.testnet.whitechain.io/tx/0x56fb40d209ed82e283dd6f5ed682a01c73a6afc55cf449a4e390bbb0d5a66250) |
+| `REJECTED NO_PO` | [`0xf6aca60a…`](https://explorer.testnet.whitechain.io/tx/0xf6aca60a677131171f5f2950c46ca5a8e846c74dac1b7fcadf90d71318d4be82) |
+| `REJECTED PAYEE_MISMATCH` | [`0xd856f3ac…`](https://explorer.testnet.whitechain.io/tx/0xd856f3acff1c5986c2c95dd70eff98d2d3c3d9aafb926b2570535aabfc1cdb74) |
+| `REJECTED DUPLICATE_INVOICE` | [`0x40159a05…`](https://explorer.testnet.whitechain.io/tx/0x40159a0500ba48aefa79df9f9174347d94a15784a593fd61011031dd0d3d02df) |
 
-An x402 spend mandate is an order on the same gate, raised by one verified person
-and signed for by another:
+An x402 spend mandate is an order on the same gate, raised by one World ID
+verified person and signed for by another:
 
-| Mandate (order #10) | Transaction |
+| Mandate (order #2) | Transaction |
 |---|---|
-| Order raised | [`0x004a2030…`](https://explorer.testnet.whitechain.io/tx/0x004a2030c8e2368bd37c8f27a7bd425ab7a9cfebdcb49d4f365ad675754489d8) |
-| 20 calls signed for | [`0x04a1ec2d…`](https://explorer.testnet.whitechain.io/tx/0x04a1ec2d05a4453ff6238459fe27804ba0246883302a65e51ee824b3cd133661) |
+| Order raised | [`0x6bca7d7f…`](https://explorer.testnet.whitechain.io/tx/0x6bca7d7f38aa165fb76e196bdbf24cb50adc124f5a7067b060afa73bf22052ac) |
+| 20 calls signed for | [`0xa6292755…`](https://explorer.testnet.whitechain.io/tx/0xa62927559573222a8e4ba00818fe322895a164dd7be1b6d6560361a8a7a2eb51) |
+
+Two x402 v2 payments that settled on Hedera testnet through the official
+facilitator, from the guardian-protected payer:
+
+| Payment | Transaction |
+|---|---|
+| Through the middleware, mandate checked | [`0.0.9185802@1793975395.201075811`](https://hashscan.io/testnet/transaction/0.0.9185802%401793975395.201075811) |
+| Agent plus guardian quorum, direct | [`0.0.9185802@1793966610.020477254`](https://hashscan.io/testnet/transaction/0.0.9185802%401793966610.020477254) |
 
 Every decision is on the Hedera topic, and the replay recomputes each digest from
-the chain's own logs:
+the chain's own logs and checks the ledger record around them:
 
 ```
-$ node packages/journal/src/cli.ts replay 0.0.11335431 --gate 0x1fcb96e5e1a092bab2376517036113beb3cc9c5a
+$ node packages/journal/src/cli.ts replay 0.0.11339027 --gate 0x8ec88c90d675594ab969ed1180f8b887dfac1c71
 
-  OK    #17  REJECTED po#0 NO_PO · digest recomputed and matched
-  OK    #18  REJECTED po#7 PAYEE_MISMATCH · digest recomputed and matched
-  OK    #19  PAID po#7 clean · digest recomputed and matched
-  OK    #20  REJECTED po#7 DUPLICATE_INVOICE · digest recomputed and matched
+  OK    ledger  4 messages, sequence 1..4 with no gaps, consensus times increasing, all paid by 0.0.8258062
+  OK    ledger  topic is closed (submit key set), immutable (no admin key) and its memo names this gate; renewal paid by 0.0.8258062
+  OK    #1  REJECTED po#0 NO_PO · digest recomputed and matched
+  OK    #2  REJECTED po#1 PAYEE_MISMATCH · digest recomputed and matched
+  OK    #3  PAID po#1 clean · digest recomputed and matched
+  OK    #4  REJECTED po#1 DUPLICATE_INVOICE · digest recomputed and matched
 
 OK - journal and chain agree
 ```
@@ -67,7 +78,7 @@ OK - journal and chain agree
 Verify any single decision from its log alone, with nothing supplied by us:
 
 ```bash
-node packages/e2e/src/verify-decision.ts 0xa22aa4ec943d977d3b7d78b246f4266663f18abd374616168c3a37ec690a3b4a
+node packages/e2e/src/verify-decision.ts 0x56fb40d209ed82e283dd6f5ed682a01c73a6afc55cf449a4e390bbb0d5a66250
 ```
 
 Reproduce the four outcomes:
@@ -78,19 +89,68 @@ node packages/e2e/src/flow.ts --refund --cleanup
 ```
 
 In the running app, `/app/proofs` shows the same items read live: the topic's
-keys from the public mirror node, the verified people, and the code paths behind
-each.
+keys and memo from the public mirror node, the payer's key structure decoded from
+the ledger, the attestor quorum read from the gate, and the code behind each.
 
 ## Sponsor integrations
 
 | Sponsor | What is used | Where | Verify |
 |---|---|---|---|
-| <img src="apps/web/public/brands/whitechain.png" alt="Whitechain" height="20"> | A real USDT vault. Orders encumber a balance, a matched invoice pays from it in one transaction. | [`ZowallGate.sol`](packages/contracts/src/ZowallGate.sol), [`MatchEngine.sol`](packages/contracts/src/MatchEngine.sol) | [Gate on the explorer](https://explorer.testnet.whitechain.io/address/0x1fcb96e5e1a092bab2376517036113beb3cc9c5a), [a PAID transaction](https://explorer.testnet.whitechain.io/tx/0xa22aa4ec943d977d3b7d78b246f4266663f18abd374616168c3a37ec690a3b4a) |
-| <img src="apps/web/public/brands/hedera.svg" alt="Hedera" height="22"> | An HCS topic as the audit journal, a mirror-node replay, and a middleware around x402. | [`hcs.ts`](packages/journal/src/hcs.ts), [`replay.ts`](packages/journal/src/replay.ts), [`x402/`](packages/x402/src) | [Topic on HashScan](https://hashscan.io/testnet/topic/0.0.11335431), `journal replay` |
+| <img src="apps/web/public/brands/whitechain.png" alt="Whitechain" height="20"> | A real USDT vault. Orders encumber a balance, a matched invoice pays from it in one transaction. | [`ZowallGate.sol`](packages/contracts/src/ZowallGate.sol), [`MatchEngine.sol`](packages/contracts/src/MatchEngine.sol) | [Gate on the explorer](https://explorer.testnet.whitechain.io/address/0x8ec88c90d675594ab969ed1180f8b887dfac1c71), [a PAID transaction](https://explorer.testnet.whitechain.io/tx/0x56fb40d209ed82e283dd6f5ed682a01c73a6afc55cf449a4e390bbb0d5a66250) |
+| <img src="apps/web/public/brands/hedera.svg" alt="Hedera" height="22"> | A hardened HCS topic as the audit journal, a replay that checks the ledger record, x402 v2 payments settled by a facilitator, and a threshold-key payer the middleware cannot be skipped around. | [`hcs.ts`](packages/journal/src/hcs.ts), [`replay.ts`](packages/journal/src/replay.ts), [`hedera.ts`](packages/x402/src/hedera.ts) | [Topic on HashScan](https://hashscan.io/testnet/topic/0.0.11339027), [payer account](https://hashscan.io/testnet/account/0.0.11338871), `journal replay` |
 | <img src="apps/web/public/brands/world.svg" alt="World" height="20"> | A uniqueness proof per person, validated on the server, compared on-chain. | [`verify/route.ts`](apps/web/app/api/world/verify/route.ts), [`verify.ts`](packages/world/src/verify.ts), [`ZowallGate.sol`](packages/contracts/src/ZowallGate.sol) | `/enroll`, `/app/proofs`, the `SodViolation` reverts |
 
 Details, with file and line ranges, are in each sponsor's section below:
 [Whitechain](#whitechain), [Hedera](#hedera), [World](#world).
+
+## Hedera, in one screen
+
+Each feature below is used for a specific job, and each can be checked on the
+public ledger without our help.
+
+| Hedera feature | The job it does here | Where |
+|---|---|---|
+| **HCS submit key** | Access control: only this service can append to the journal, so a stranger cannot fill it with noise or forge an entry | [`createTopic`](packages/journal/src/hcs.ts#L124) |
+| **No admin key** | The topic cannot be edited, re-keyed or deleted, by us or by anyone who steals our account | [`createTopic`](packages/journal/src/hcs.ts#L124) |
+| **Auto-renew account** | An admin-less topic would otherwise expire. Naming the payer has to happen at creation | [`hcs.ts` L150](packages/journal/src/hcs.ts#L150) |
+| **Topic memo** | Names the chain and the gate on the ledger itself, so anyone can tell whose journal this is | [`topicMemo`](packages/journal/src/hcs.ts#L98) |
+| **Consensus order and timestamps** | The replay requires sequence `1..N` with no gaps and strictly rising times, so a dropped or reordered message is visible even from a mirror node you do not trust | [`checkLedger`](packages/journal/src/replay.ts#L158) |
+| **Payer account on every message** | Any message not paid for by the journal's own account was submitted by someone else holding the key | [`checkLedger`](packages/journal/src/replay.ts#L158) |
+| **Public mirror nodes** | The replay needs no credentials. Reads retry, honour `Retry-After`, and fall through to other mirrors | [`readTopic`](packages/journal/src/mirror.ts#L91) |
+| **Threshold keys** | The agent's payer account requires the agent **and** 2-of-3 guardians to sign, enforced by the network. Skipping the middleware cannot move money | [`guardedKey`](packages/x402/src/hedera.ts#L54) |
+| **x402 v2 `exact` scheme** | Real payments: a partially signed `TransferTransaction`, settled by the official facilitator, which also checks the payer's key | [`resource/route.ts`](apps/web/app/api/x402/resource/%5B%5B...rest%5D%5D/route.ts) |
+| **HCS journal of every decision** | Each Whitechain decision's digest is carried to Hedera, recomputable from Whitechain's own logs | [`replay`](packages/journal/src/replay.ts#L113) |
+
+Custom topic fees (HIP-991) are deliberately not used. They charge strangers who
+are allowed to write; here strangers are not allowed to write at all, so a fee
+would guard a door that is already closed.
+
+## What each party can do alone
+
+The point of the design is that no single compromised party can move money.
+
+| Party | Can it move money alone? | Why not |
+|---|---|---|
+| **The relayer** (whoever sends the transaction and pays gas) | No | `submitInvoice` is permissionless and the vendor's signature authorises it, not the sender. The signature covers payee, quantity, price, hash, nonce and deadline, so a relayer cannot alter an invoice. It can only delay one |
+| **One attestor key** | No | The gate accepts an attestation only when a quorum of attestors signed it, in strictly ascending address order, so the same key twice does not count |
+| **A copied attestation** | No | Each attestation commits to the exact action it authorises: the PO terms, the quantity received, the hold and its verdict. The contract recomputes that from the call's own arguments, so a copy only works for what its person signed for |
+| **The vendor** | No | Pays only the payee the purchase order names, after a receipt a different person signed for |
+| **The agent** (x402) | No | Its payer account needs guardian signatures. A facilitator refuses the agent alone: *payer did not sign the transaction* |
+| **One guardian** | No | Each guardian signs only after decoding the transaction itself, and one signature is below the threshold |
+| **A hacked middleware** | No | It can lie to the guardians about the quote, but they read the transaction bytes, and the bytes pay the wrong account |
+
+Moving money takes a quorum of attestors, or the agent and a quorum of guardians,
+being wrong together. A deployment runs each as a separate service; the contract
+and the ledger enforce the quorum regardless of how they are hosted. The demo
+environment runs them in one process.
+
+The attacks are tests, not claims:
+[`Frontrun.t.sol`](packages/contracts/test/Frontrun.t.sol) copies an attestation
+onto different terms, a different quantity and a flipped verdict;
+[`Quorum.t.sol`](packages/contracts/test/Quorum.t.sol) refuses one key, a repeated
+key, out-of-order signatures and an outsider;
+[`hedera.test.ts`](packages/x402/test/hedera.test.ts) hands guardians a
+transaction that pays someone else.
 
 ## Why existing controls miss it
 
@@ -203,25 +263,34 @@ stateDiagram-v2
 ### The x402 middleware
 
 A 402 response names a payee, a price and a thing being sold, and asks to be
-paid. That is an invoice, so the same engine judges it.
+paid. That is an invoice, so the same engine judges it. And because a wrapper
+around `fetch` is something an agent can simply not call, the payer account's key
+is a threshold structure that Hedera enforces itself.
 
 ```mermaid
-flowchart LR
-  AG["Agent"] --> MW["withZowall"]
-  subgraph HED["Hedera x402"]
-    RS["Resource server"]
-    FAC["x402 facilitator"]
-  end
-  subgraph WC["Whitechain"]
-    MAN["Mandate: an open purchase order<br/>whose spec is the endpoint URL"]
-  end
-  MW -->|request| RS
-  RS -->|402 + payment terms| MW
-  MW -->|payTo, price, resource| MAN
-  MAN -->|eleven rules, unchanged| MW
-  MW -->|refused: never signed| AG
-  MW -->|allowed: sign, retry| RS
-  RS --> FAC
+sequenceDiagram
+  autonumber
+  participant AG as Agent
+  participant MW as withZowall
+  participant RS as Resource server
+  participant GD as Guardians (2 of 3)
+  participant WC as Whitechain mandate
+  participant FA as x402 facilitator
+  participant HD as Hedera ledger
+  AG->>MW: fetch(url)
+  MW->>RS: GET
+  RS-->>MW: 402, PAYMENT-REQUIRED (payTo, amount, feePayer)
+  MW->>WC: read the mandate for this URL
+  Note over MW: eleven rules, unchanged.<br/>Refused: the payment is never built.
+  MW->>MW: agent signs the transfer
+  MW->>GD: transaction bytes + quote
+  Note over GD: each guardian decodes the bytes, checks them<br/>against the quote, runs the mandate check, then signs
+  GD-->>MW: guardian signatures
+  MW->>RS: PAYMENT-SIGNATURE
+  RS->>FA: verify, then settle
+  FA->>HD: submit. Payer key = agent AND 2-of-3 guardians
+  FA-->>RS: transaction id
+  RS-->>AG: 200, PAYMENT-RESPONSE
 ```
 
 ## How it works
@@ -265,7 +334,9 @@ another purchase order's reservation.
 ### Segregation of duties
 
 The creator, the receiver and the approver must be three different humans, and
-that is enforced on-chain against World ID enrolment nullifiers.
+that is enforced on-chain against World ID enrolment nullifiers. Every role
+attestation is signed by a quorum of attestors and bound to the action it
+authorises.
 
 A nullifier is scoped to RP + action and issued once per human per action, so
 per-event proofs cannot be compared across roles. Identity therefore comes from
@@ -300,11 +371,12 @@ prices, person ids and a nonce that the log does not contain. With it,
 | What is used | Where |
 |---|---|
 | `ZowallGate.sol` on chain 1874, source verified on the Whitechain explorer | [`ZowallGate.sol`](packages/contracts/src/ZowallGate.sol) |
-| The Whitechain Sepolia USDT, 6 decimals, as the vault asset. No stand-in token. | [`createPO` L218](packages/contracts/src/ZowallGate.sol#L218) |
-| A matching invoice settles in one transaction | [`submitInvoice` L318](packages/contracts/src/ZowallGate.sol#L318) |
-| A third person releases a hold | [`resolveHold` L363](packages/contracts/src/ZowallGate.sol#L363) |
-| An override draws from free balance only | [`_amend` L548](packages/contracts/src/ZowallGate.sol#L548) |
-| The creator can cancel and release the reservation | [`cancelPO` L268](packages/contracts/src/ZowallGate.sol#L268) |
+| The Whitechain Sepolia USDT, 6 decimals, as the vault asset. No stand-in token. | [`createPO` L244](packages/contracts/src/ZowallGate.sol#L244) |
+| A matching invoice settles in one transaction | [`submitInvoice` L344](packages/contracts/src/ZowallGate.sol#L344) |
+| A third person releases a hold | [`resolveHold` L389](packages/contracts/src/ZowallGate.sol#L389) |
+| An override draws from free balance only | [`_amend` L610](packages/contracts/src/ZowallGate.sol#L610) |
+| An attestation counts only with a quorum of attestors, bound to its action | [`_useAttestation` L624](packages/contracts/src/ZowallGate.sol#L624), [`_quorumSigned` L642](packages/contracts/src/ZowallGate.sol#L642), [`createActionHash` L483](packages/contracts/src/ZowallGate.sol#L483) |
+| The creator can cancel and release the reservation | [`cancelPO` L294](packages/contracts/src/ZowallGate.sol#L294) |
 | The rules, mirrored from the TypeScript engine | [`MatchEngine.sol`](packages/contracts/src/MatchEngine.sol), [`evaluate` L14](packages/gate-core/src/evaluate.ts#L14) |
 
 **What is new about it.** Payment controls usually sit in front of a transfer.
@@ -316,12 +388,14 @@ never spend another order's reservation.
 
 **Why it holds up.**
 
-- 28 Foundry tests mirror the acceptance suite, and the same scenarios run
-  against the TypeScript engine so the two cannot disagree.
+- 45 Foundry tests: the acceptance suite, mirrored by the TypeScript engine so the
+  two cannot disagree, plus the attacks on attestations and the quorum. The signing
+  service and the contract agree on every action hash by a shared test vector.
 - A bad document comes back as `REJECTED` or `HELD` with every failing reason. It
   never reverts, so the reason survives.
 - No withdraw function. A vault the operator can empty is not a reservation.
-- Attestations are single use, expire, and are domain-bound to this contract.
+- Attestations are single use, expire, are domain-bound to this contract, bind the
+  exact action they authorise, and need a quorum of attestors.
 - Each `Decision` event carries its own 448-byte preimage, so a log verifies
   itself.
 
@@ -333,16 +407,20 @@ never spend another order's reservation.
 
 | What is used | Where |
 |---|---|
-| An HCS topic with a submit key held by the service and no admin key | [`createTopic` L91](packages/journal/src/hcs.ts#L91), [`setSubmitKey` L111](packages/journal/src/hcs.ts#L111) |
+| An HCS topic with a submit key held by the service and no admin key | [`createTopic` L124](packages/journal/src/hcs.ts#L124), [`setSubmitKey` L149](packages/journal/src/hcs.ts#L149) |
 | One decision per message, never more than 1024 bytes, never chunked | [`entry.ts`](packages/journal/src/entry.ts) |
-| A writer that never blocks a payment: a failed write queues and retries | [`JournalWriter` L124](packages/journal/src/hcs.ts#L124), [`QueueingWriter` L189](packages/journal/src/hcs.ts#L189) |
+| A writer that never blocks a payment: a failed write queues and retries | [`JournalWriter` L164](packages/journal/src/hcs.ts#L164), [`QueueingWriter` L229](packages/journal/src/hcs.ts#L229) |
 | Key handling that picks the curve from the key's shape | [`parseKey` L57](packages/journal/src/hcs.ts#L57) |
-| Public mirror-node reads, no credentials | [`readTopic` L45](packages/journal/src/mirror.ts#L45) |
-| The replay: recompute every digest from Whitechain's logs and compare | [`replay` L94](packages/journal/src/replay.ts#L94), [`digest_mismatch` L198](packages/journal/src/replay.ts#L198) |
+| Public mirror-node reads, no credentials | [`readTopic` L91](packages/journal/src/mirror.ts#L91) |
+| The replay: recompute every digest from Whitechain's logs and compare | [`replay` L113](packages/journal/src/replay.ts#L113), [`digest_mismatch` L315](packages/journal/src/replay.ts#L315) |
 | The digest both chains carry | [`encodeDecision` L59](packages/gate-core/src/canonical.ts#L59), [`journalDigest` L81](packages/gate-core/src/canonical.ts#L81) |
-| A metered endpoint that answers HTTP 402 with payment terms | [`x402/match/route.ts` L33](apps/web/app/api/x402/match/route.ts#L33) |
-| A middleware that wraps an agent's x402 payments | [`withZowall` L72](packages/x402/src/middleware.ts#L72), [`createGuard` L68](packages/x402/src/guard.ts#L68) |
-| A 402 quote mapped onto an invoice | [`quoteToInvoice` L111](packages/x402/src/quote.ts#L111), [`resourceSpecHash` L38](packages/x402/src/quote.ts#L38) |
+| The ledger record is checked: sequence, ordering, payer, topic settings | [`checkLedger` L158](packages/journal/src/replay.ts#L158), [`checkTopic` L207](packages/journal/src/replay.ts#L207) |
+| A payer whose key is the agent AND a guardian quorum | [`guardedKey` L54](packages/x402/src/hedera.ts#L54), [`guardianQuorum` L277](packages/x402/src/hedera.ts#L277) |
+| Guardians decode the transaction before they sign | [`problemsWith` L150](packages/x402/src/hedera.ts#L150), [`createGuardian` L245](packages/x402/src/hedera.ts#L245) |
+| A real x402 v2 resource server, verified and settled by a facilitator | [`resource/route.ts` L45](apps/web/app/api/x402/resource/%5B%5B...rest%5D%5D/route.ts#L45) |
+| A metered endpoint: pay in HBAR, get every reason code | [`x402/match/route.ts` L56](apps/web/app/api/x402/match/route.ts#L56) |
+| A middleware that wraps an agent's x402 payments | [`withZowall` L88](packages/x402/src/middleware.ts#L88), [`createGuard` L68](packages/x402/src/guard.ts#L68) |
+| A 402 quote mapped onto an invoice | [`quoteToInvoice` L180](packages/x402/src/quote.ts#L180), [`parsePaymentRequired` L113](packages/x402/src/quote.ts#L113) |
 
 **What is new about it.** HCS is used as a witness for a different chain. Each
 journal entry carries the digest of a Whitechain decision, and anyone can
@@ -355,7 +433,20 @@ machine should be paying this, to this address, at this price, again.
 [`@zowall/x402`](packages/x402/README.md) wraps the agent's `fetch` and matches
 every 402 against a mandate a person signed, before the wallet is asked to sign.
 A mandate is an open order on Whitechain whose spec is the endpoint URL, not a
-config file. Anything that is not a 402 passes straight through.
+config file. Anything that is not a 402 passes straight through. It speaks x402
+v2, the version the Hedera facilitators run, and still reads v1.
+
+**Not skippable.** A wrapper around `fetch` is a control the agent can simply not
+call, so the payer's key does the enforcing. The agent's Hedera account is created
+with the key `2 of [ agent, 2 of [ guardian 1, guardian 2, guardian 3 ] ]`.
+The network will not move a tinybar without the agent and a quorum of guardians
+signing the same transaction, and the facilitator checks that against the key on
+the ledger before it sponsors anything. Each guardian decodes the transaction
+itself and signs only if it pays exactly what the quote says, to the account the
+mandate names, within its price and call count. On testnet, the agent signing
+alone, the agent plus one guardian, and the guardians without the agent are each
+refused by the network with `INVALID_SIGNATURE`; the agent plus two guardians
+settles.
 
 | What the quote does | Code |
 |---|---|
@@ -365,21 +456,29 @@ config file. Anything that is not a 402 passes straight through.
 | Is a quote already decided | `DUPLICATE_INVOICE` |
 | Spends past the authorised call count | `QTY_OVER_RECEIVED` |
 
-In the running app, `/app/metered` runs each of these against a live 402. A
-refused quote never reaches the wallet. The 402 resource it calls is a local
-stand-in that speaks the protocol and settles nothing; its settlement is marked
-simulated.
+In the running app, `/app/metered` runs each of these against a live 402, plus a
+bypass scenario in which the agent skips the guard and the facilitator refuses.
+A refused quote never reaches the wallet. The honest scenario settles real testnet
+HBAR through the official facilitator and returns a transaction id you can open on
+HashScan. The resource server it calls is one we run, so that it can be shown
+misbehaving.
 
 **Why it holds up.**
 
-- The replay recomputes every digest with the engine the contract mirrors.
-- Ten replay tests, among them: an edited digest, a softened outcome, a dropped reason code and
-  restated quantities are each caught.
+- The replay recomputes every digest with the engine the contract mirrors, then
+  checks the record around them: sequence, ordering, payer, and the topic's own
+  settings.
+- 25 journal tests, among them: an edited digest, a softened outcome, a dropped
+  reason code, restated quantities, a gap in the sequence, a reordered message, a
+  foreign payer and an open topic are each caught.
 - Junk that a stranger submits to the topic is skipped, not fatal.
 - The journal never blocks a payment.
-- 19 middleware tests, most of them attacks: an unauthorised endpoint, a payee
-  swapped at quote time, a price raised after the fact, a replay, an exhausted
-  allowance.
+- Mirror reads retry on 429 and 5xx, honour `Retry-After`, never retry a 404, and
+  fall through to other mirrors from the start of the topic.
+- 37 middleware and guardian tests, most of them attacks: an unauthorised
+  endpoint, a payee swapped at quote time, a price raised after the fact, a replay,
+  an exhausted allowance, a transaction that pays someone else, a middleware that
+  lies to the guardians.
 
 ## World
 
@@ -393,9 +492,9 @@ simulated.
 | Proofs verified on the server against World's v4 endpoint, forwarded as received | [`verifyWorldProof` L42](packages/world/src/verify.ts#L42), [`verify/route.ts` L15](apps/web/app/api/world/verify/route.ts#L15) |
 | A request context signed on the server, with a single-use nonce | [`api/world/config`](apps/web/app/api/world/config/route.ts) |
 | The enrolment registry, persisted across restarts | [`JsonFileEnrollmentStore` L124](packages/world/src/registry.ts#L124) |
-| EIP-712 role attestations, signed only after verification | [`signAttestation` L64](packages/world/src/attest.ts#L64) |
+| EIP-712 role attestations, signed only after verification | [`signAttestation` L155](packages/world/src/attest.ts#L155), [`createActionHash` L83](packages/world/src/attest.ts#L83) |
 | Attestations checked on-chain with `ecrecover` | [`SigLib.sol`](packages/contracts/src/SigLib.sol) |
-| The refusal: one person holding two roles reverts | [`SodViolation` L190](packages/contracts/src/ZowallGate.sol#L190), [L295](packages/contracts/src/ZowallGate.sol#L295), [L372](packages/contracts/src/ZowallGate.sol#L372) |
+| The refusal: one person holding two roles reverts | [`SodViolation` L204](packages/contracts/src/ZowallGate.sol#L204), [L321](packages/contracts/src/ZowallGate.sol#L321), [L398](packages/contracts/src/ZowallGate.sol#L398) |
 
 **What is new about it.** A World ID nullifier is scoped to one action, so proofs
 from different actions cannot be compared. Zowall separates identity from
@@ -410,11 +509,12 @@ approved this".
 - The denied path happens on-chain: the person who raised an order and the person
   who signed for the delivery each try to release a hold, both transactions revert
   with `SodViolation`, and the hold stays open.
-- Attestations are single use, expire after ten minutes, and name the role and the
-  order.
+- Attestations are single use, expire after ten minutes, and name the role, the
+  order and the exact action. A quorum of attestors must sign each one.
 - `nullifier_replayed` is handled as World recognising a person, not as a failed
   integration.
-- Fifteen tests cover the registry, role codes, freshness modes and verification.
+- 19 tests cover the registry, role codes, freshness modes, verification, the
+  action hashes and quorum signing.
 
 ## Try it
 
@@ -473,26 +573,27 @@ pnpm install
 cp .env.example .env.local     # nothing has a working default
 
 pnpm test                      # every package
-pnpm test:contracts            # forge, 28 scenarios
+pnpm test:contracts            # forge, 45 scenarios
 pnpm dev                       # the web app
 ```
 
 | Suite | Tests |
 |---|---|
 | `gate-core` | 45 |
-| `contracts` (Foundry) | 28 |
-| `x402` | 19 |
-| `world` | 15 |
-| `journal` | 10 |
+| `contracts` (Foundry) | 45 |
+| `x402` | 37 |
+| `world` | 19 |
+| `journal` | 25 |
 | `sdk` | 4 |
 
 ## What's next
 
-- Settle a paid x402 request end to end through a facilitator, instead of the
-  local stand-in.
-- Write middleware decisions to the Hedera journal under their own entry kind.
+- Write the x402 middleware's decisions to the Hedera journal as their own entry
+  kind, with the spend ledger kept on HCS so concurrent guardians agree on a
+  mandate's remaining calls by consensus order.
 - Session proofs for per-action freshness.
 - Bind a receiver to each order at creation.
+- Pay x402 calls in HTS USDC, so a mandate's price and its settlement share an asset.
 
 ## License
 
