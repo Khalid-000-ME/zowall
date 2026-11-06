@@ -6,7 +6,8 @@
   "license": "MIT",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./hcs": "./src/hcs.ts"
   },
   "bin": {
     "journal": "./src/cli.ts"

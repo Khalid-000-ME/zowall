@@ -45,6 +45,63 @@ const PREIMAGE_LAYOUT = [
 
 const OUTCOMES: readonly Outcome[] = ["PAID", "HELD", "REJECTED"];
 
+export type DecodedPreimage = {
+  chainId: bigint;
+  gate: `0x${string}`;
+  poId: bigint;
+  invoiceHash: Bytes32;
+  outcome: Outcome;
+  reasonMask: number;
+  invQty: bigint;
+  recvQty: bigint;
+  invUnitPrice: bigint;
+  poUnitPrice: bigint;
+  creatorPersonId: Bytes32;
+  receiverPersonId: Bytes32;
+  approverPersonId: Bytes32;
+  nonce: bigint;
+};
+
+/**
+ * Read the facts of a decision back out of the 448-byte preimage a `Decision`
+ * event carries. This is what lets anyone verify a decision from its log alone.
+ */
+export function decodePreimage(preimage: `0x${string}`): DecodedPreimage {
+  const [
+    chainId,
+    gate,
+    poId,
+    invoiceHash,
+    outcome,
+    reasonMask,
+    invQty,
+    recvQty,
+    invUnitPrice,
+    poUnitPrice,
+    creatorPersonId,
+    receiverPersonId,
+    approverPersonId,
+    nonce,
+  ] = decodeAbiParameters(PREIMAGE_LAYOUT, preimage);
+
+  return {
+    chainId: chainId as bigint,
+    gate: gate as `0x${string}`,
+    poId: poId as bigint,
+    invoiceHash: invoiceHash as Bytes32,
+    outcome: OUTCOMES[Number(outcome)] ?? "REJECTED",
+    reasonMask: Number(reasonMask),
+    invQty: invQty as bigint,
+    recvQty: recvQty as bigint,
+    invUnitPrice: invUnitPrice as bigint,
+    poUnitPrice: poUnitPrice as bigint,
+    creatorPersonId: creatorPersonId as Bytes32,
+    receiverPersonId: receiverPersonId as Bytes32,
+    approverPersonId: approverPersonId as Bytes32,
+    nonce: nonce as bigint,
+  };
+}
+
 export type EvmSourceOptions = {
   rpcUrl: string;
   gateAddress: `0x${string}`;
@@ -102,36 +159,21 @@ export async function evmSourceFromChain(
 
   for (const log of parsed) {
     const a = log.args;
-    const [
-      ,
-      ,
-      poId,
-      invoiceHash,
-      outcome,
-      reasonMask,
-      invQty,
-      recvQty,
-      invUnitPrice,
-      poUnitPrice,
-      creatorPersonId,
-      receiverPersonId,
-      approverPersonId,
-      nonce,
-    ] = decodeAbiParameters(PREIMAGE_LAYOUT, a.preimage);
+    const p = decodePreimage(a.preimage);
 
     byTx.set(log.transactionHash.toLowerCase(), {
-      poId: poId as bigint,
-      invoiceHash: invoiceHash as Bytes32,
-      outcome: OUTCOMES[Number(outcome)] ?? "REJECTED",
-      reasonMask: Number(reasonMask),
-      invQty: invQty as bigint,
-      recvQty: recvQty as bigint,
-      invUnitPrice: invUnitPrice as bigint,
-      poUnitPrice: poUnitPrice as bigint,
-      creatorPersonId: creatorPersonId as Bytes32,
-      receiverPersonId: receiverPersonId as Bytes32,
-      approverPersonId: approverPersonId as Bytes32,
-      nonce: nonce as bigint,
+      poId: p.poId,
+      invoiceHash: p.invoiceHash,
+      outcome: p.outcome,
+      reasonMask: p.reasonMask,
+      invQty: p.invQty,
+      recvQty: p.recvQty,
+      invUnitPrice: p.invUnitPrice,
+      poUnitPrice: p.poUnitPrice,
+      creatorPersonId: p.creatorPersonId,
+      receiverPersonId: p.receiverPersonId,
+      approverPersonId: p.approverPersonId,
+      nonce: p.nonce,
       journalDigest: a.journalDigest as Bytes32,
       txHash: log.transactionHash,
       blockNumber: Number(log.blockNumber),
