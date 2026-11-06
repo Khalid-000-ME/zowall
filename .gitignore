@@ -36,3 +36,7 @@ CONTEXT-research-insights.md
 
 # app-local label cache
 apps/web/.data/
+
+# local-only pages and assets
+apps/web/app/(internal)/
+apps/web/public/_local/
