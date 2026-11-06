@@ -5,7 +5,7 @@ import { runScenario, type ScenarioId } from "@/lib/x402-demo";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const VALID: ScenarioId[] = ["honest", "unauthorised", "payee-swap", "price-hike", "replay"];
+const VALID: ScenarioId[] = ["honest", "unauthorised", "payee-swap", "price-hike", "replay", "bypass"];
 
 /**
  * Run the middleware once and report what it did.

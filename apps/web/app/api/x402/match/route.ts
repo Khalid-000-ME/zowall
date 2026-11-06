@@ -3,6 +3,14 @@ import { evaluate, type EvalContext } from "@zowall/gate-core";
 
 import { getPO, publicClient } from "@/lib/chain";
 import { serverEnv } from "@/lib/env";
+import { NETWORK, feePayer, settle, verify } from "@/lib/x402-facilitator";
+import {
+  PAYMENT_REQUIRED_HEADER,
+  PAYMENT_RESPONSE_HEADER,
+  PAYMENT_SIGNATURE_HEADER,
+  decodeHeader,
+  encodeHeader,
+} from "@zowall/x402";
 import { GATE_ABI } from "@zowall/sdk";
 
 /**
@@ -30,36 +38,59 @@ type MatchRequest = {
   invoiceHash?: `0x${string}`;
 };
 
-export async function POST(request: Request) {
-  const paymentHeader = request.headers.get("x-payment");
+/** The price of one check, in tinybars. A tenth of a cent, give or take the exchange rate. */
+const PRICE = process.env.X402_PRICE ?? "100000";
 
-  if (!paymentHeader) {
-    // x402: tell the client what it costs and how to pay, then let it retry.
-    return NextResponse.json(
-      {
-        x402Version: 1,
-        error: "payment required",
-        accepts: [
-          {
-            scheme: "exact",
-            network: process.env.X402_NETWORK ?? "hedera-testnet",
-            resource: "/api/x402/match",
-            description: "One three-way match check, with every reason code.",
-            mimeType: "application/json",
-            maxAmountRequired: process.env.X402_PRICE ?? "1000",
-            payTo: process.env.X402_PAY_TO ?? "",
-            asset: process.env.X402_ASSET ?? "",
-            maxTimeoutSeconds: 60,
-          },
-        ],
-      },
-      { status: 402 },
-    );
+async function terms() {
+  return {
+    scheme: "exact",
+    network: NETWORK,
+    amount: PRICE,
+    asset: "0.0.0",
+    payTo: process.env.X402_PAY_TO ?? "",
+    maxTimeoutSeconds: 60,
+    extra: { feePayer: await feePayer() },
+  };
+}
+
+export async function POST(request: Request) {
+  const header = request.headers.get(PAYMENT_SIGNATURE_HEADER);
+  const accepted = await terms().catch(() => null);
+  if (!accepted) {
+    return NextResponse.json({ error: "no facilitator is reachable, so no payment can be taken" }, { status: 503 });
   }
 
-  const settled = await settlePayment(paymentHeader);
-  if (!settled.ok) {
-    return NextResponse.json({ error: settled.detail }, { status: 402 });
+  if (!header) {
+    // x402 v2: tell the client what it costs and how to pay, then let it retry.
+    const required = {
+      x402Version: 2,
+      error: `${PAYMENT_SIGNATURE_HEADER} header is required`,
+      resource: {
+        url: new URL(request.url).origin + "/api/x402/match",
+        description: "One three-way match check, with every reason code.",
+        mimeType: "application/json",
+      },
+      accepts: [accepted],
+    };
+    return new NextResponse(JSON.stringify(required), {
+      status: 402,
+      headers: { "content-type": "application/json", [PAYMENT_REQUIRED_HEADER]: encodeHeader(required) },
+    });
+  }
+
+  const payload = decodeHeader(header);
+  if (!payload) return NextResponse.json({ error: "the payment header is not valid base64 JSON" }, { status: 400 });
+
+  // Verify first, then settle. Verification is free and refuses a payment whose
+  // signatures do not satisfy the payer's key, before anything is sponsored.
+  const envelope = { paymentPayload: payload, paymentRequirements: accepted };
+  const checked = await verify(envelope);
+  if (!checked.isValid) {
+    return NextResponse.json({ error: "payment not accepted", reason: checked.invalidReason }, { status: 402 });
+  }
+  const settled = await settle(envelope);
+  if (!settled.success) {
+    return NextResponse.json({ error: "settlement failed", reason: settled.errorReason }, { status: 402 });
   }
 
   const body = (await request.json().catch(() => null)) as MatchRequest | null;
@@ -143,59 +174,14 @@ export async function POST(request: Request) {
     },
     {
       status: 200,
-      headers: settled.receipt ? { "x-payment-response": settled.receipt } : {},
+      headers: {
+        [PAYMENT_RESPONSE_HEADER]: encodeHeader({
+          success: true,
+          transaction: settled.transaction,
+          network: settled.network ?? NETWORK,
+          payer: settled.payer,
+        }),
+      },
     },
   );
-}
-
-/**
- * Verify and settle the x402 payment through the facilitator.
- *
- * Several facilitators exist and which one is reachable varies, so the URL is
- * configuration rather than a constant, and a self-hosted one works the same
- * way.
- */
-async function settlePayment(
-  paymentHeader: string,
-): Promise<{ ok: true; receipt?: string } | { ok: false; detail: string }> {
-  const facilitator = process.env.FACILITATOR_URL;
-  if (!facilitator) {
-    return { ok: false, detail: "FACILITATOR_URL is not set, so no payment can be settled" };
-  }
-
-  try {
-    const res = await fetch(`${facilitator.replace(/\/$/, "")}/settle`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        x402Version: 1,
-        paymentHeader,
-        paymentRequirements: {
-          scheme: "exact",
-          network: process.env.X402_NETWORK ?? "hedera-testnet",
-          resource: "/api/x402/match",
-          maxAmountRequired: process.env.X402_PRICE ?? "1000",
-          payTo: process.env.X402_PAY_TO ?? "",
-          asset: process.env.X402_ASSET ?? "",
-        },
-      }),
-      signal: AbortSignal.timeout(20_000),
-    });
-
-    if (!res.ok) return { ok: false, detail: `facilitator returned ${res.status}` };
-
-    const data = (await res.json().catch(() => ({}))) as {
-      success?: boolean;
-      transaction?: string;
-      error?: string;
-    };
-
-    if (data.success === false) return { ok: false, detail: data.error ?? "payment rejected" };
-
-    // The settled Hedera transaction id is returned to the caller, so a paid
-    // request is auditable by the party that paid for it.
-    return { ok: true, ...(data.transaction ? { receipt: data.transaction } : {}) };
-  } catch (err) {
-    return { ok: false, detail: `facilitator unreachable: ${String(err)}` };
-  }
 }

@@ -7,7 +7,7 @@ type Scenario = { id: string; title: string; blurb: string; expect: string };
 type Result = {
   scenario: string;
   target: string;
-  quote: { payTo: string; maxAmountRequired: string; resource: string; network: string } | null;
+  quote: { payTo: string; amount: string; resource: string; network: string; asset: string } | null;
   outcome: "PAID" | "HELD" | "REJECTED" | "NO_QUOTE";
   codes: string[];
   reason: string;
@@ -15,7 +15,14 @@ type Result = {
   mandateId: string | null;
   status: number;
   settled: boolean;
+  settlement: { transaction: string; network: string; payer: string } | null;
+  bypass: {
+    agentAlone: { accepted: boolean; reason: string };
+    guardians: { signed: number; refused: string };
+  } | null;
 };
+
+const hashscanTx = (id: string) => `https://hashscan.io/testnet/transaction/${encodeURIComponent(id)}`;
 
 const CHIP: Record<string, string> = {
   PAID: "ui-chip ui-chip--ok",
@@ -122,7 +129,7 @@ export function X402Console({ scenarios }: { scenarios: Scenario[] }) {
               <div className="ui-row">
                 <span className="ui-muted">Quoted price</span>
                 <span className="ui-mono">
-                  {result.quote.maxAmountRequired} atomic · {result.quote.network}
+                  {result.quote.amount} {result.quote.asset === "0.0.0" ? "tinybars" : "atomic"} · {result.quote.network}
                 </span>
               </div>
               <div className="ui-row">
@@ -148,6 +155,47 @@ export function X402Console({ scenarios }: { scenarios: Scenario[] }) {
               )}
             </span>
           </div>
+
+          {result.settlement ? (
+            <div className="ui-row">
+              <span className="ui-muted">Settled on Hedera</span>
+              <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+                <a
+                  href={hashscanTx(result.settlement.transaction)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="ui-mono"
+                >
+                  {result.settlement.transaction}
+                </a>
+              </span>
+            </div>
+          ) : null}
+
+          {result.bypass ? (
+            <>
+              <div className="ui-row">
+                <span className="ui-muted">Agent signs alone: the facilitator</span>
+                <span className={result.bypass.agentAlone.accepted ? "ui-chip ui-chip--ok" : "ui-chip ui-chip--bad"}>
+                  {result.bypass.agentAlone.accepted ? "accepted" : "refused"}
+                </span>
+              </div>
+              <p className="ui-tile-body" style={{ margin: "6px 0 0" }}>
+                {result.bypass.agentAlone.reason}
+              </p>
+              <div className="ui-row">
+                <span className="ui-muted">Middleware lies to the guardians</span>
+                <span className={result.bypass.guardians.signed > 0 ? "ui-chip ui-chip--ok" : "ui-chip ui-chip--bad"}>
+                  {result.bypass.guardians.signed} signed
+                </span>
+              </div>
+              {result.bypass.guardians.refused ? (
+                <p className="ui-tile-body" style={{ margin: "6px 0 0" }}>
+                  {result.bypass.guardians.refused}
+                </p>
+              ) : null}
+            </>
+          ) : null}
 
           <p className="ui-tile-body" style={{ marginTop: "var(--space-4)" }}>
             {result.reason}

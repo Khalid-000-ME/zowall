@@ -8,7 +8,9 @@
  * read comes back as `null` and the page says it could not confirm that item.
  */
 
-import { getDecisions, getPOs, type ChainDecision, type ChainPO } from "@/lib/chain";
+import { getDecisions, getPOs, publicClient, type ChainDecision, type ChainPO } from "@/lib/chain";
+import { GATE_ABI } from "@zowall/sdk";
+import { accountKeyTree, describe } from "@/lib/hedera-key";
 import { serverEnv } from "@/lib/env";
 import { humans, nameOf, type Human } from "@/lib/humans";
 import { getJournal } from "@/lib/journal-read";
@@ -22,6 +24,8 @@ export type TopicProof = {
   adminKey: unknown;
   submitKeySet: boolean;
   memo: string;
+  /** the account that pays the topic's renewal; without one an admin-less topic would expire */
+  autoRenewAccount: string | null;
 };
 
 /** Ask the public mirror node, not our own record of what we created. */
@@ -36,12 +40,14 @@ export async function topicProof(topicId: string): Promise<TopicProof | null> {
       admin_key?: unknown;
       submit_key?: unknown;
       memo?: string;
+      auto_renew_account?: string | null;
     };
     return {
       topicId,
       adminKey: j.admin_key ?? null,
       submitKeySet: j.submit_key != null,
       memo: j.memo ?? "",
+      autoRenewAccount: j.auto_renew_account ?? null,
     };
   } catch {
     return null;
@@ -109,6 +115,34 @@ export async function worldProof(decisions: ChainDecision[]): Promise<WorldProof
   };
 }
 
+export type Quorum = { threshold: number; attestors: string[] };
+
+/** The attestor quorum, read from the gate itself rather than from our config. */
+export async function readQuorum(gate: `0x${string}`): Promise<Quorum | null> {
+  try {
+    const [threshold, attestors] = await Promise.all([
+      publicClient().readContract({ address: gate, abi: GATE_ABI, functionName: "threshold" }),
+      publicClient().readContract({ address: gate, abi: GATE_ABI, functionName: "attestors" }),
+    ]);
+    return { threshold: Number(threshold), attestors: [...(attestors as readonly string[])] };
+  } catch {
+    return null;
+  }
+}
+
+export type GuardianProof = {
+  payer: string | null;
+  /** "2 of [ ECDSA key, 2 of [ ... ] ]", decoded from the ledger's own record of the key */
+  keyStructure: string | null;
+};
+
+export async function guardianProof(): Promise<GuardianProof> {
+  const payer = process.env.X402_PAYER_ACCOUNT ?? null;
+  if (!payer) return { payer: null, keyStructure: null };
+  const tree = await accountKeyTree(payer);
+  return { payer, keyStructure: tree ? describe(tree) : null };
+}
+
 export type Proofs = {
   reachable: boolean;
   gate: string | null;
@@ -121,6 +155,8 @@ export type Proofs = {
   journalEntries: number | null;
   mandate: Awaited<ReturnType<typeof findMandate>>;
   world: WorldProof;
+  quorum: Quorum | null;
+  guardian: GuardianProof;
 };
 
 export async function loadProofs(origin: string): Promise<Proofs> {
@@ -140,10 +176,12 @@ export async function loadProofs(origin: string): Promise<Proofs> {
     reachable = false;
   }
 
-  const [topic, journal, mandate] = await Promise.all([
+  const [topic, journal, mandate, quorum, guardian] = await Promise.all([
     env.hederaTopicId ? topicProof(env.hederaTopicId) : Promise.resolve(null),
     getJournal(),
     findMandate(`${origin}/api/x402/resource`).catch(() => null),
+    env.gateAddress ? readQuorum(env.gateAddress) : Promise.resolve(null),
+    guardianProof(),
   ]);
 
   return {
@@ -158,5 +196,7 @@ export async function loadProofs(origin: string): Promise<Proofs> {
     journalEntries: journal.error ? null : journal.records.length,
     mandate,
     world: await worldProof(decisions),
+    quorum,
+    guardian,
   };
 }

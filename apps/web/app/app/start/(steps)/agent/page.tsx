@@ -38,22 +38,25 @@ if (decision.outcome !== "PAID") {
   log(decision.reason);
 }`;
 
-  const x402Snippet = `POST /api/x402/match
-# No x-payment header yet, so the endpoint quotes itself:
+  const x402Snippet = `GET /api/x402/resource
+# No PAYMENT-SIGNATURE yet, so the server quotes in a PAYMENT-REQUIRED header:
 
 HTTP/1.1 402 Payment Required
 {
-  "x402Version": 1,
+  "x402Version": 2,
+  "resource": { "url": "/api/x402/resource" },
   "accepts": [{
     "scheme": "exact",
-    "network": "${process.env.X402_NETWORK ?? "hedera-testnet"}",
-    "resource": "/api/x402/match",
-    "maxAmountRequired": "${process.env.X402_PRICE ?? "1000"}"
+    "network": "hedera:testnet",
+    "amount": "10000",
+    "asset": "0.0.0",
+    "payTo": "0.0.11338868",
+    "extra": { "feePayer": "0.0.9185802" }
   }]
 }
 
-# The agent pays, retries with x-payment, and gets the verdict
-# plus every reason code - before it ships anything.`;
+# The agent pays, retries with PAYMENT-SIGNATURE, and a facilitator
+# verifies and settles on Hedera before the server answers.`;
 
   return (
     <>

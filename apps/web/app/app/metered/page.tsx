@@ -12,11 +12,18 @@ import { mandateSpecHash, RESOURCE_PATH, SCENARIOS } from "@/lib/x402-demo";
 export const dynamic = "force-dynamic";
 
 const SNIPPET = `import { createGuard, withZowall } from "@zowall/x402";
+import { buildAgentSignedTransfer, createGuardian, guardianQuorum, toPayload }
+  from "@zowall/x402/hedera";
 
-// Your x402 client is unchanged. This wraps the fetch it uses.
 const guarded = withZowall({
   guard: createGuard({ keccak256, findMandate, roles }),
-  signPayment,          // only ever called for a quote that passed
+  // Only ever called for a quote that passed. The agent signs, then a quorum of
+  // guardians each decode the transaction and sign if it matches the mandate.
+  signPayment: async (quote) => {
+    const tx = await buildAgentSignedTransfer({ client, requirements: quote, payer, agent });
+    const { bytes } = await guardianQuorum(tx, quote, guardians, 2);
+    return { payload: toPayload(bytes) };
+  },
 });
 
 // Anything that is not a 402 passes straight through.
@@ -76,7 +83,7 @@ export default async function Metered() {
             </li>
             <li className="ui-numrow">
               <span className="ui-numrow-n">02</span>
-              <span className="ui-numrow-label">maxAmountRequired becomes the unit price</span>
+              <span className="ui-numrow-label">amount becomes the unit price</span>
               <span className="ui-numrow-sub">
                 A price raised after the mandate was signed is PRICE_OVER_TOLERANCE.
               </span>
@@ -174,6 +181,45 @@ export default async function Metered() {
       </section>
 
       <section className="ui-section">
+        <div className="ui-split">
+          <div>
+            <h2 className="ui-title">Skipping the middleware does not work</h2>
+            <p className="ui-lede">
+              A wrapper around fetch is a control the agent can simply not call. So the payer
+              account&rsquo;s key is a threshold structure that Hedera enforces itself: the agent
+              and a quorum of independent guardians must both sign.
+            </p>
+          </div>
+          <ul className="ui-numlist">
+            <li className="ui-numrow">
+              <span className="ui-numrow-n">01</span>
+              <span className="ui-numrow-label">The agent alone cannot pay</span>
+              <span className="ui-numrow-sub">
+                The facilitator checks the signatures against the account&rsquo;s key on the ledger and
+                refuses: payer did not sign.
+              </span>
+            </li>
+            <li className="ui-numrow">
+              <span className="ui-numrow-n">02</span>
+              <span className="ui-numrow-label">A guardian reads before it signs</span>
+              <span className="ui-numrow-sub">
+                It decodes the transaction, checks it pays exactly the quote to the mandate&rsquo;s
+                account, then runs the mandate check itself. A lying middleware gets nothing signed.
+              </span>
+            </li>
+            <li className="ui-numrow">
+              <span className="ui-numrow-n">03</span>
+              <span className="ui-numrow-label">No single party is enough</span>
+              <span className="ui-numrow-sub">
+                One hacked guardian, or a hacked relayer, cannot move money. It takes the agent and
+                a quorum of guardians being wrong together.
+              </span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section className="ui-section">
         <h2 className="ui-title">Try to get a payment through</h2>
         <p className="ui-lede">
           Each of these is something an unguarded agent pays without hesitating. The line to watch
@@ -196,9 +242,11 @@ export default async function Metered() {
           <div>
             <pre className="ui-code">{SNIPPET}</pre>
             <div className="ui-note" style={{ marginTop: "var(--space-4)" }}>
-              The endpoint these scenarios call is a local stand-in for a third-party x402 API. It
-              speaks the protocol correctly and settles nothing: no money moves, and the settlement
-              it reports is marked simulated.
+              The endpoint these scenarios call is a resource server we run, so that it can be
+              shown misbehaving. It is a real x402 v2 server: it quotes in a PAYMENT-REQUIRED
+              header and has the official Hedera facilitator verify and settle each payment on
+              testnet, so the honest scenario moves real testnet HBAR and returns a transaction you
+              can open on HashScan.
             </div>
           </div>
         </div>

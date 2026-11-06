@@ -12,20 +12,29 @@ import { usdt } from "@/lib/product";
 export const dynamic = "force-dynamic";
 
 /**
- * The transactions that created the metered mandate (order #10): the order
- * raised by one verified person, and the call volume signed for by another.
- * They are historical facts, so they stay valid after a vault reset.
+ * Historical, verifiable transactions. They stay valid after any vault reset.
+ *
+ * The mandate is order #2 on the current gate, raised by Alice and signed for
+ * by Bob, both World ID verified, with the attestor quorum signing each.
  */
 const MANDATE_TXS = [
   {
     label: "Order raised",
-    hash: "0x004a2030c8e2368bd37c8f27a7bd425ab7a9cfebdcb49d4f365ad675754489d8",
+    hash: "0x6bca7d7f38aa165fb76e196bdbf24cb50adc124f5a7067b060afa73bf22052ac",
   },
   {
     label: "Calls signed for",
-    hash: "0x04a1ec2d05a4453ff6238459fe27804ba0246883302a65e51ee824b3cd133661",
+    hash: "0xa62927559573222a8e4ba00818fe322895a164dd7be1b6d6560361a8a7a2eb51",
   },
 ] as const;
+
+/** Real x402 v2 payments that settled on Hedera testnet through the official facilitator. */
+const SETTLEMENTS = [
+  { label: "Through the middleware, mandate checked", id: "0.0.9185802@1793975395.201075811" },
+  { label: "Agent plus guardian quorum, direct", id: "0.0.9185802@1793966610.020477254" },
+] as const;
+
+const hashscanTx = (id: string) => `https://hashscan.io/testnet/transaction/${encodeURIComponent(id)}`;
 
 function Paths({ items }: { items: ReadonlyArray<readonly [string, string]> }) {
   return (
@@ -115,6 +124,24 @@ export default async function Proofs() {
               )}
             </div>
             <div className="ui-row">
+              <span className="ui-muted">Memo</span>
+              {p.topic ? (
+                <span className="ui-mono" style={{ fontSize: 11.5, textAlign: "right", maxWidth: 360 }}>
+                  {p.topic.memo}
+                </span>
+              ) : (
+                <span className="ui-faint">mirror node did not answer</span>
+              )}
+            </div>
+            <div className="ui-row">
+              <span className="ui-muted">Renewal paid by</span>
+              {p.topic?.autoRenewAccount ? (
+                <span className="ui-mono">{p.topic.autoRenewAccount}</span>
+              ) : (
+                <span className="ui-chip ui-chip--held">none: the topic would expire</span>
+              )}
+            </div>
+            <div className="ui-row">
               <span className="ui-muted">Entries</span>
               <span className="ui-mono">
                 {p.journalEntries === null ? "not confirmed" : p.journalEntries}
@@ -194,6 +221,64 @@ export default async function Proofs() {
       <section className="ui-section">
         <div className="ui-split">
           <div>
+            <h3 className="ui-tile-title">A payer the middleware cannot be skipped around</h3>
+            <p className="ui-lede">
+              A control in the agent&rsquo;s own process is one the agent can skip. So the agent&rsquo;s
+              payer account has a threshold key: the agent <strong>and</strong> a quorum of independent
+              guardians must sign every payment. The facilitator checks that against the key on the
+              ledger, and consensus checks it again.
+            </p>
+            <p className="ui-lede">
+              Each guardian decodes the transaction itself and signs only if it pays exactly what the
+              quote says, to the account the mandate names, within its price and call count.
+            </p>
+          </div>
+
+          <div className="ui-panel">
+            <div className="ui-row">
+              <span className="ui-muted">Payer account</span>
+              {p.guardian.payer ? (
+                <ProofHash
+                  value={p.guardian.payer}
+                  href={`https://hashscan.io/testnet/account/${p.guardian.payer}`}
+                  lead={3}
+                  tail={5}
+                />
+              ) : (
+                <span className="ui-faint">not configured</span>
+              )}
+            </div>
+            <div className="ui-row">
+              <span className="ui-muted">Key, as the ledger records it</span>
+              {p.guardian.keyStructure ? (
+                <span className="ui-mono" style={{ fontSize: 11.5, textAlign: "right", maxWidth: 360 }}>
+                  {p.guardian.keyStructure}
+                </span>
+              ) : (
+                <span className="ui-faint">not confirmed</span>
+              )}
+            </div>
+            {SETTLEMENTS.map((t) => (
+              <div key={t.id} className="ui-row">
+                <span className="ui-muted">{t.label}</span>
+                <a href={hashscanTx(t.id)} target="_blank" rel="noreferrer" className="ui-mono" style={{ fontSize: 12 }}>
+                  {t.id}
+                </a>
+              </div>
+            ))}
+            <p className="ui-tile-body" style={{ marginTop: "var(--space-3)", marginBottom: 0 }}>
+              Verified live against the facilitator: the agent signing alone is refused with{" "}
+              <span className="ui-mono">invalid_exact_hedera_payload_signature_invalid</span>; the agent
+              plus a guardian quorum is accepted and settles. Run both in{" "}
+              <Link href="/app/metered">Metered spend</Link>.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="ui-section">
+        <div className="ui-split">
+          <div>
             <h3 className="ui-tile-title">Where the code is</h3>
             <p className="ui-lede">
               The Hedera integration and the middleware, by file. The repository is private for
@@ -206,6 +291,9 @@ export default async function Proofs() {
               ["packages/journal/src/mirror.ts", "reads the topic from a public mirror node, no credentials"],
               ["packages/journal/src/replay.ts", "recomputes each digest from the chain's logs and compares"],
               ["packages/gate-core/src/canonical.ts", "the 448-byte preimage and the digest both chains carry"],
+              ["packages/x402/src/hedera.ts", "threshold-key payer, guardians that decode before they sign"],
+              ["packages/x402/scripts/guardian-setup.ts", "creates the payer and proves agent-alone is refused"],
+              ["apps/web/app/api/x402/resource/[[...rest]]/route.ts", "a real x402 v2 resource server using a facilitator"],
               ["packages/x402/src/middleware.ts", "withZowall: wraps fetch, never signs a refused quote"],
               ["packages/x402/src/guard.ts", "reuses the eleven reason codes unchanged on a 402 quote"],
               ["packages/x402/src/quote.ts", "maps payTo, maxAmountRequired and resource onto an invoice"],
@@ -248,6 +336,16 @@ export default async function Proofs() {
                 <span className="ui-mono">{p.world.appId}</span>
               </div>
             ) : null}
+            <div className="ui-row">
+              <span className="ui-muted">Attestor quorum (read from the gate)</span>
+              {p.quorum ? (
+                <span className="ui-chip ui-chip--ok">
+                  {p.quorum.threshold} of {p.quorum.attestors.length} must sign
+                </span>
+              ) : (
+                <span className="ui-faint">not confirmed</span>
+              )}
+            </div>
             <div className="ui-row">
               <span className="ui-muted">Verified people</span>
               <span className="ui-mono">{p.world.enrolled.length}</span>
@@ -334,9 +432,10 @@ export default async function Proofs() {
               ["apps/web/app/api/world/verify/route.ts", "the only place an enrolment is created"],
               ["packages/world/src/verify.ts", "forwards the proof to World's verify endpoint, reads the nullifier"],
               ["packages/world/src/registry.ts", "the enrolment registry that survives a restart"],
-              ["packages/world/src/attest.ts", "EIP-712 role attestations, signed only for enrolled people"],
+              ["packages/world/src/attest.ts", "quorum-signed EIP-712 attestations, bound to the action"],
               ["packages/contracts/src/SigLib.sol", "ecrecover on the attestation, on-chain"],
-              ["packages/contracts/src/ZowallGate.sol", "reverts SodViolation if one person holds two roles"],
+              ["packages/contracts/src/ZowallGate.sol", "reverts SodViolation; checks the quorum and the action hash"],
+              ["packages/contracts/test/Frontrun.t.sol", "the attacks: a copied attestation cannot be reused for other terms"],
               ["apps/web/lib/use-world-enroll.ts", "the enrolment sequence, shared by both interfaces"],
             ]}
           />
