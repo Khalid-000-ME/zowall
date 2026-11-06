@@ -19,7 +19,6 @@
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { timingSafeEqual } from "node:crypto";
 
 import { createWalletClient, http, parseEventLogs } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -38,6 +37,7 @@ import {
 import { txUrl } from "@/lib/chains";
 import { serial } from "@/lib/demo";
 import { serverEnv } from "@/lib/env";
+import { authenticate } from "@/lib/accounts";
 import { describe as describeOrder } from "@/lib/store";
 
 /* ------------------------------------------------------------------- types -- */
@@ -64,6 +64,8 @@ export type Session = {
   description: string;
   /** the merchant's own reference, echoed back */
   reference?: string;
+  /** the merchant that created it, when it was created with a merchant's key */
+  merchantId?: string;
   successUrl?: string;
   cancelUrl?: string;
   createdAt: number;
@@ -145,16 +147,13 @@ function put(session: Session): void {
 /* --------------------------------------------------------------------- auth -- */
 
 /**
- * Creating a session is a merchant action, so it needs the merchant's secret.
- * With no secret configured it is refused outright rather than left open.
+ * Creating a session is a vendor's action, made from its server with its API key.
  */
-export function authorised(request: Request): "ok" | "unconfigured" | "denied" {
-  const secret = process.env.CHECKOUT_API_KEY;
-  if (!secret) return "unconfigured";
-  const given = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
-  const a = Buffer.from(given);
-  const b = Buffer.from(secret);
-  return a.length === b.length && timingSafeEqual(a, b) ? "ok" : "denied";
+export function authorised(request: Request): { status: "ok"; merchantId: string } | { status: "denied" } | { status: "forbidden" } {
+  const account = authenticate(request);
+  if (!account) return { status: "denied" };
+  if (account.role !== "vendor") return { status: "forbidden" };
+  return { status: "ok", merchantId: account.id };
 }
 
 /* ---------------------------------------------------------------- creation -- */
@@ -199,7 +198,7 @@ export function validate(body: Partial<NewSession> | null): { ok: true; value: N
   return { ok: true, value: body as NewSession };
 }
 
-export function createSession(input: NewSession): Session {
+export function createSession(input: NewSession, merchantId: string | null = null): Session {
   const session: Session = {
     id: `cs_${crypto.randomUUID().replaceAll("-", "").slice(0, 24)}`,
     invoice: {
@@ -215,6 +214,7 @@ export function createSession(input: NewSession): Session {
     signature: input.signature as `0x${string}`,
     description: (input.description ?? "").slice(0, 120),
     ...(input.reference ? { reference: input.reference.slice(0, 120) } : {}),
+    ...(merchantId ? { merchantId } : {}),
     ...(safeUrl(input.successUrl) ? { successUrl: safeUrl(input.successUrl)! } : {}),
     ...(safeUrl(input.cancelUrl) ? { cancelUrl: safeUrl(input.cancelUrl)! } : {}),
     createdAt: Date.now(),

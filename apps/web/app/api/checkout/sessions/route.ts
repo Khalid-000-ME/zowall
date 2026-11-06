@@ -14,18 +14,18 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(request: Request) {
   const auth = authorised(request);
-  if (auth === "unconfigured") {
-    return NextResponse.json({ error: "Checkout is not configured on this server." }, { status: 503 });
-  }
-  if (auth === "denied") {
+  if (auth.status === "denied") {
     return NextResponse.json({ error: "Invalid API key." }, { status: 401 });
+  }
+  if (auth.status === "forbidden") {
+    return NextResponse.json({ error: "Only a vendor account can create checkout sessions." }, { status: 403 });
   }
 
   const body = (await request.json().catch(() => null)) as Partial<NewSession> | null;
   const checked = validate(body);
   if (!checked.ok) return NextResponse.json({ error: checked.error }, { status: 400 });
 
-  const session = createSession(checked.value);
+  const session = createSession(checked.value, auth.merchantId);
   const origin = new URL(request.url).origin;
 
   return NextResponse.json(
