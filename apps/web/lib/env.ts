@@ -14,6 +14,8 @@ export type ServerEnv = {
   gateDeployBlock: bigint | null;
   /** lets the walkthrough and attack console submit real transactions */
   demoEnabled: boolean;
+  /** the attestor signs only for people who have verified with World ID */
+  requireVerified: boolean;
   deployerKey: `0x${string}` | null;
   vendorKey: `0x${string}` | null;
   hederaAccountId: string | null;
@@ -36,6 +38,7 @@ export function serverEnv(): ServerEnv {
     gateAddress: hex(process.env.GATE_ADDRESS),
     gateDeployBlock: process.env.GATE_DEPLOY_BLOCK ? BigInt(process.env.GATE_DEPLOY_BLOCK) : null,
     demoEnabled: process.env.DEMO_ENABLED === "true",
+    requireVerified: process.env.WORLD_REQUIRE_VERIFIED === "true",
     deployerKey: hex(process.env.PRIVATE_KEY),
     vendorKey: hex(process.env.VENDOR_PRIVATE_KEY),
     hederaAccountId: process.env.HEDERA_ACCOUNT_ID ?? null,

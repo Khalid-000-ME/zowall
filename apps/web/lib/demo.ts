@@ -327,9 +327,26 @@ async function attest(c: Ctx, human: Human, role: Role, poId: bigint) {
   );
 }
 
-function person(key: string | undefined, label: string): Human {
+/**
+ * Who is acting, and whether the attestor will vouch for them.
+ *
+ * With verification required, the attestor signs only for people who have proven
+ * they are a unique human through World ID. Anyone else is refused here, before a
+ * transaction exists: the protected action does not happen, and there is nothing
+ * on-chain to point at because nothing was sent. `strict` can only tighten the
+ * deployment's setting, never loosen it.
+ */
+function person(key: string | undefined, label: string, strict = false): Human {
   const human = key ? humanByKey(key) : undefined;
   if (!human) throw new DemoError(`Pick who ${label} is.`);
+
+  if ((strict || serverEnv().requireVerified) && !human.enrolled) {
+    throw new DemoError(
+      `Denied: ${human.name} has not verified with World ID, so the attestor issued no ` +
+        `attestation and nothing was sent.`,
+      403,
+    );
+  }
   return human;
 }
 
@@ -344,9 +361,10 @@ export async function raisePO(input: {
   unitPrice: string;
   tolerancePct: string;
   creator: string;
+  requireVerified?: boolean;
 }): Promise<Journalled> {
   const c = context();
-  const creator = person(input.creator, "raising the order");
+  const creator = person(input.creator, "raising the order", input.requireVerified);
 
   let qty: bigint;
   let unit: bigint;
@@ -409,9 +427,10 @@ export async function attestDelivery(input: {
   poId: string;
   qty: string;
   receiver: string;
+  requireVerified?: boolean;
 }): Promise<Journalled> {
   const c = context();
-  const receiver = person(input.receiver, "signing for the delivery");
+  const receiver = person(input.receiver, "signing for the delivery", input.requireVerified);
   const poId = BigInt(input.poId);
   const qty = BigInt(input.qty);
 
@@ -559,9 +578,10 @@ export async function resolveHoldAs(input: {
   holdId: string;
   approve: boolean;
   approver: string;
+  requireVerified?: boolean;
 }): Promise<Journalled> {
   const c = context();
-  const approver = person(input.approver, "deciding on the hold");
+  const approver = person(input.approver, "deciding on the hold", input.requireVerified);
   const holdId = BigInt(input.holdId);
 
   const hold = await getHold(holdId);

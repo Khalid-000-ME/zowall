@@ -8,7 +8,7 @@ export const maxDuration = 120;
 
 export async function POST(request: Request) {
   return handle(request, async () => {
-    const body = await readBody<{ poId: string; qty: string; receiver: string }>(request);
+    const body = await readBody<{ poId: string; qty: string; receiver: string; requireVerified?: boolean }>(request);
     const { result, journal } = await attestDelivery(body);
     after(() => writeJournal(journal));
     return { result };

@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const enrollment = enrollments.get(body.personId as `0x${string}`);
+  const enrollment = enrollments().get(body.personId as `0x${string}`);
   if (!enrollment) {
     return NextResponse.json(
       { ok: false, detail: "this person is not enrolled - verify with World ID first" },

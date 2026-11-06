@@ -9,6 +9,7 @@ import { Wordmark } from "@/components/Logo";
  */
 const NAV = [
   { href: "/walkthrough", label: "Walkthrough" },
+  { href: "/enroll", label: "Verify people" },
   { href: "/po", label: "Purchase orders" },
   { href: "/holds", label: "Holds" },
   { href: "/journal", label: "Journal" },

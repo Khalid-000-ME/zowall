@@ -32,7 +32,7 @@ export const STAND_INS: readonly Human[] = [
 ];
 
 export function humans(): Human[] {
-  const live: Human[] = enrollments.all().map((e) => ({
+  const live: Human[] = enrollments().all().map((e) => ({
     key: e.personId,
     name: e.label,
     personId: e.personId,

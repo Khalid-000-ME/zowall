@@ -30,6 +30,7 @@ export async function GET(request: Request) {
     return {
       enabled: env.demoEnabled && missing.length === 0,
       switchedOff: !env.demoEnabled,
+      requireVerified: env.requireVerified,
       missing,
       chainId: env.chainId,
       gate: env.gateAddress,

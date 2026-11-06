@@ -76,6 +76,7 @@ pnpm dev
 
 | Page | What it is |
 |---|---|
+| `/enroll` | Verify a person with World ID. The proof is checked on the server, and the nullifier becomes that person's id |
 | `/walkthrough` | Eleven steps against the real gate: set up an order, attacks it refuses, a matching invoice, exceptions that need a second person, and a replay of the journal |
 | `/attack` | Type anything a finance team might receive. A deliberately gullible agent acts on it and the gate answers |
 | `/po`, `/match/[id]` | Purchase orders, and the three documents side by side with the fields that disagree highlighted |

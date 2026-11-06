@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SAMPLE_ATTACKS } from "@zowall/agent";
+import Link from "next/link";
 
 import { Hash } from "@/components/Hash";
 import { ReplayView, type Replay } from "@/components/ReplayView";
@@ -15,6 +16,7 @@ type Human = { key: string; name: string; enrolled: boolean; personId: string };
 type Info = {
   enabled: boolean;
   switchedOff: boolean;
+  requireVerified: boolean;
   missing: string[];
   humans: Human[];
   vault: { display: { balance: string; encumbered: string; free: string } } | null;
@@ -130,7 +132,7 @@ const STEPS: Array<{
     id: "deny",
     act: "exceptions",
     title: "The wrong people try to approve",
-    what: "The person who raised the order and the person who signed for the delivery each try to release the hold. The contract refuses both, and the refused transactions stay on the explorer: the protected action did not happen, and anyone can check.",
+    what: "The person who raised the order and the person who signed for the delivery each try to release the hold. The contract refuses both, and the refused transactions stay on the explorer: the protected action did not happen, and anyone can check. A third attempt comes from someone who has not verified with World ID. The attestor will not vouch for them, so no attestation exists and no transaction is sent at all.",
     needs: "hold",
   },
   {
@@ -159,6 +161,7 @@ export function Walkthrough({ topicUrl, gate }: { topicUrl: string | null; gate:
   const [cast, setCast] = useState({ creator: "alice", receiver: "bob", approver: "cara" });
   const [text, setText] = useState(SAMPLE_ATTACKS[0]?.text ?? "");
   const [resetting, setResetting] = useState(false);
+  const [strict, setStrict] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -181,11 +184,18 @@ export function Walkthrough({ topicUrl, gate }: { topicUrl: string | null; gate:
 
   const names = useMemo(() => {
     const out: Record<string, string> = {};
-    for (const h of info?.humans ?? []) out[h.personId.toLowerCase()] = h.name;
+    for (const h of info?.humans ?? []) {
+      out[h.personId.toLowerCase()] = `${h.name} (${h.enrolled ? "World ID" : "stand-in"})`;
+    }
     return out;
   }, [info]);
 
   const nameOf = (key: string) => info?.humans.find((h) => h.key === key)?.name ?? key;
+
+  // The deployment can require verification outright. The switch below can only make
+  // it stricter, never looser, and the server applies the same rule either way.
+  const enforce = strict || Boolean(info?.requireVerified);
+  const unverified = info?.humans.find((h) => !h.enrolled);
 
   async function run(id: StepId, job: () => Promise<Partial<Run> & { result?: StepResult }>) {
     setBusy(true);
@@ -246,6 +256,7 @@ export function Walkthrough({ topicUrl, gate }: { topicUrl: string | null; gate:
               unitPrice: "1",
               tolerancePct: "5",
               creator: cast.creator,
+              requireVerified: enforce,
             });
             if (result.poId) {
               setPoId(result.poId);
@@ -266,6 +277,7 @@ export function Walkthrough({ topicUrl, gate }: { topicUrl: string | null; gate:
               poId,
               qty: "2",
               receiver: cast.receiver,
+              requireVerified: enforce,
             });
             return { result };
           })
@@ -371,6 +383,25 @@ export function Walkthrough({ topicUrl, gate }: { topicUrl: string | null; gate:
             }
           />
         ))}
+        {unverified ? (
+          <Btn
+            label={`${unverified.name} tries (has not verified)`}
+            tone="quiet"
+            disabled={busy || !holdId}
+            onClick={() =>
+              run("deny", async () => {
+                const { result } = await post<{ result: StepResult }>("/api/demo/hold", {
+                  holdId,
+                  approve: true,
+                  approver: unverified.key,
+                  // Forces the check on for this attempt whatever the switch says.
+                  requireVerified: true,
+                });
+                return { result };
+              })
+            }
+          />
+        ) : null}
       </div>
     ),
     approve: (
@@ -383,6 +414,7 @@ export function Walkthrough({ topicUrl, gate }: { topicUrl: string | null; gate:
               holdId,
               approve: true,
               approver: cast.approver,
+              requireVerified: enforce,
             });
             if (!result.reverted) setHoldId(null);
             return { result };
@@ -525,10 +557,45 @@ export function Walkthrough({ topicUrl, gate }: { topicUrl: string | null; gate:
               </label>
             ))}
           </div>
-          <p style={{ margin: "var(--space-3) 0 0", fontSize: 13, color: "var(--text-muted)" }}>
-            Each is a stable identifier, the World ID nullifier from one enrollment action. Try
-            picking the same person for two roles and see what the contract says.
-          </p>
+          <div style={{ marginTop: "var(--space-3)", display: "grid", gap: 10, fontSize: 13 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {(["creator", "receiver", "approver"] as const).map((role) => {
+                const who = people.find((h) => h.key === cast[role]);
+                if (!who) return null;
+                return (
+                  <span
+                    key={role}
+                    style={{
+                      padding: "3px 10px",
+                      borderRadius: "var(--radius-sm)",
+                      background: who.enrolled ? "var(--paid-bg)" : "var(--held-bg)",
+                      color: who.enrolled ? "var(--paid)" : "var(--held)",
+                    }}
+                  >
+                    {role}: {who.name}, {who.enrolled ? "verified with World ID" : "stand-in"}
+                  </span>
+                );
+              })}
+            </div>
+
+            <label style={{ display: "flex", gap: 8, alignItems: "center", color: "var(--text-muted)" }}>
+              <input
+                type="checkbox"
+                checked={enforce}
+                disabled={Boolean(info?.requireVerified)}
+                onChange={(e) => setStrict(e.target.checked)}
+              />
+              Only people verified with World ID may act
+              {info?.requireVerified ? " (required by this deployment)" : ""}
+            </label>
+
+            <p style={{ margin: 0, color: "var(--text-muted)", lineHeight: 1.55 }}>
+              Each person is a stable identifier: the World ID nullifier from one enrolment. Stand-ins
+              exist so the flow can be rehearsed;{" "}
+              <Link href="/enroll">verify real people</Link> and they appear in these lists. Try the
+              same person in two roles and see what the contract says.
+            </p>
+          </div>
         </div>
       </section>
 

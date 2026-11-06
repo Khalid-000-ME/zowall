@@ -150,6 +150,19 @@ curl -s localhost:3000/api/world/config | python3 -m json.tool
 `missing` is not. Add `?sign=1` to exercise the RP signature itself — but each
 call burns a single-use nonce, so do not loop it.
 
+People verify at `/enroll`: the page opens the IDKit widget with a request signed by the
+server, sends the resulting proof to `/api/world/verify`, and the server alone turns it
+into a `personId`. Enrolments are written to `apps/web/.data/enrollments.json`, because
+World will not issue a second proof to the same person and an in-memory list would lose
+them on restart. In staging the widget offers **Use the simulator** for test identities.
+
+```
+WORLD_REQUIRE_VERIFIED=true   # the attestor signs only for verified people
+```
+
+Off by default, so the flow can be rehearsed with stand-ins. The walkthrough has a switch
+that can tighten it per run but never loosen it.
+
 Segregation of duties needs **three different enrolled people** for creator,
 receiver and approver. In non-production environments the identities behind
 proofs are not real, and `packages/world/README.md` explains why the design

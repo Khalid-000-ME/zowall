@@ -12,9 +12,20 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
-import { MemoryEnrollmentStore } from "@zowall/world";
+import { JsonFileEnrollmentStore } from "@zowall/world";
 
-export const enrollments = new MemoryEnrollmentStore();
+const ENROLLMENTS = resolve(process.cwd(), ".data/enrollments.json");
+
+/**
+ * The people who have verified with World ID.
+ *
+ * Returns a store freshly loaded from disk on every call, never a cached one: in
+ * dev each route can load its own copy of this module, and a long-lived store in
+ * one would never see an enrolment written by another.
+ */
+export function enrollments(): JsonFileEnrollmentStore {
+  return new JsonFileEnrollmentStore(ENROLLMENTS);
+}
 
 const DESCRIPTIONS = resolve(process.cwd(), ".data/descriptions.json");
 
