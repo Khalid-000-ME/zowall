@@ -92,6 +92,9 @@ importers:
       '@zowall/world':
         specifier: workspace:*
         version: link:../world
+      '@zowall/x402':
+        specifier: workspace:*
+        version: link:../x402
       viem:
         specifier: 2.21.55
         version: 2.21.55(typescript@5.9.2)

@@ -13,6 +13,7 @@
     "@zowall/gate-core": "workspace:*",
     "@zowall/sdk": "workspace:*",
     "@zowall/world": "workspace:*",
+    "@zowall/x402": "workspace:*",
     "viem": "2.21.55"
   }
 }
