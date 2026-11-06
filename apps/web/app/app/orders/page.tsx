@@ -3,7 +3,8 @@ import Link from "next/link";
 import { getPOs, type ChainPO } from "@/lib/chain";
 import { addressUrl } from "@/lib/chains";
 import { serverEnv } from "@/lib/env";
-import { nameOf } from "@/lib/humans";
+import { NewOrder, SignDelivery } from "@/components/product/OrderActions";
+import { humans, nameOf } from "@/lib/humans";
 import { shortHex, usdt } from "@/lib/product";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,7 @@ export default async function Orders() {
   }
 
   const open = pos.filter((p) => p.status === "Open");
+  const people = humans().map((h) => ({ key: h.key, name: h.name }));
 
   return (
     <>
@@ -68,6 +70,59 @@ export default async function Orders() {
           </div>
         </div>
       </section>
+
+      <section className="ui-section">
+        <div className="ui-split">
+          <div>
+            <h2 className="ui-title">Raise an order</h2>
+            <p className="ui-lede">
+              Step one of every payment. Reserving the money first is what lets a vendor check, on-chain,
+              that it is set aside before they ship.
+            </p>
+          </div>
+          <NewOrder people={people} enabled={env.demoEnabled} />
+        </div>
+      </section>
+
+      {open.length > 0 ? (
+        <section className="ui-section">
+          <div className="ui-split">
+            <div>
+              <h2 className="ui-title">Sign for a delivery</h2>
+              <p className="ui-lede">
+                A different person confirms the goods, or the calls, actually arrived. The one who
+                raised the order is refused by the contract.
+              </p>
+            </div>
+            <div style={{ display: "grid", gap: "var(--space-4)" }}>
+              {open.map((po) => (
+                <div key={po.id.toString()} className="ui-panel">
+                  <div className="ui-row" style={{ paddingTop: 0 }}>
+                    <span>
+                      Order <span className="ui-mono">#{po.id.toString()}</span>
+                      <span className="ui-faint">
+                        {" "}
+                        · raised by {nameOf(po.creatorPersonId)}
+                      </span>
+                    </span>
+                    <span className="ui-mono">
+                      {po.received.toString()} of {po.qty.toString()} received
+                    </span>
+                  </div>
+                  <div style={{ paddingTop: "var(--space-3)" }}>
+                    <SignDelivery
+                      poId={po.id.toString()}
+                      remaining={Number(po.qty - po.received)}
+                      people={people}
+                      enabled={env.demoEnabled}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className="ui-section">
         {pos.length === 0 ? (

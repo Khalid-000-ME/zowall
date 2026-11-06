@@ -533,9 +533,10 @@ The workspace is the product; the explainer is a guided tour of it.
 | `/` | The landing page |
 | `/app` | Workspace overview: vault, decisions, exceptions, people |
 | `/app/start` | Setup in four tabs: people, vault, agent, rules |
-| `/app/orders`, `/app/exceptions` | Purchase orders, and the queue a third person works |
+| `/app/orders`, `/app/exceptions` | Raise an order and sign for a delivery; the queue a third person works |
 | `/app/agents`, `/app/metered` | The agent call log, and the x402 middleware against a live 402 |
 | `/app/proofs` | Every claim above, read live, with the code behind it |
+| `/docs` | Step-by-step docs: the SDK, the x402 middleware, and the reference |
 | `/enroll` | Verify a person with World ID |
 | `/walkthrough` | Eleven steps against the real gate |
 | `/attack` | Type anything a finance team might receive; a gullible agent acts on it |

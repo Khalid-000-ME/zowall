@@ -7,6 +7,7 @@ import { Wordmark } from "@/components/Logo";
 
 const LINKS = [
   { href: "/app", label: "App" },
+  { href: "/docs", label: "Docs" },
   { href: "/attack", label: "Attack console" },
   { href: "/journal", label: "Journal" },
 ] as const;

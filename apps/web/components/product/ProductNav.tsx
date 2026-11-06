@@ -33,7 +33,10 @@ const GROUPS: ReadonlyArray<{ label: string; items: readonly Item[] }> = [
   },
   {
     label: "Verify",
-    items: [{ href: "/app/proofs", label: "Proofs" }],
+    items: [
+      { href: "/app/proofs", label: "Proofs" },
+      { href: "/docs", label: "SDK docs" },
+    ],
   },
 ];
 
