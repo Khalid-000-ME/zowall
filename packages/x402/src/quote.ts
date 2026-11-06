@@ -9,7 +9,7 @@
  * So the mapping is literal:
  *
  *   payTo             -> invoice payee
- *   maxAmountRequired -> invoice unit price
+ *   amount            -> invoice unit price (v1 called it maxAmountRequired)
  *   resource          -> which mandate authorises this spend
  *   one call          -> one unit
  *
@@ -20,12 +20,30 @@
 import type { Bytes32, Hex, Invoice, PurchaseOrder } from "@zowall/gate-core";
 
 import type { PaymentRequirements, PaymentRequiredBody } from "./types.ts";
-import { isPaymentRequirements } from "./types.ts";
+import { PAYMENT_REQUIRED_HEADER, decodeHeader, isPaymentRequirements } from "./types.ts";
 
 export type Keccak256 = (data: Hex) => Hex;
 
 const utf8ToHex = (s: string): Hex =>
   `0x${Array.from(new TextEncoder().encode(s), (b) => b.toString(16).padStart(2, "0")).join("")}`;
+
+/**
+ * The EVM address a payee is compared as.
+ *
+ * A purchase order names its payee as an EVM address, because that is what the
+ * Whitechain contract stores. A Hedera quote names an account id such as
+ * `0.0.11338868`. Every Hedera account has a deterministic EVM address - its
+ * shard, realm and number laid out as 20 big-endian bytes - so the two forms
+ * identify the same account and can be compared exactly. An address that is
+ * already an address is left alone.
+ */
+export function payeeAddress(payTo: string): Hex {
+  const m = /^(\d+)\.(\d+)\.(\d+)$/.exec(payTo.trim());
+  if (!m) return payTo as Hex;
+  const [shard, realm, num] = [BigInt(m[1]!), BigInt(m[2]!), BigInt(m[3]!)];
+  const hex = (n: bigint, bytes: number) => n.toString(16).padStart(bytes * 2, "0");
+  return `0x${hex(shard, 4)}${hex(realm, 8)}${hex(num, 8)}` as Hex;
+}
 
 /**
  * A mandate is identified by the resource it covers.
@@ -78,24 +96,75 @@ export function quoteHash(
     requirements.asset.toLowerCase(),
     requirements.network,
     requirements.scheme,
-    requirements.maxAmountRequired,
+    requirements.amount,
     nonce.toString(),
   ].join("\n");
   return keccak256(utf8ToHex(parts)) as Bytes32;
 }
 
-/** Read the quote out of a 402 response body. Returns null if it is not one. */
-export function parsePaymentRequired(body: unknown): PaymentRequiredBody | null {
-  if (typeof body !== "object" || body === null) return null;
-  const v = body as Record<string, unknown>;
+/**
+ * Read the quote out of a 402 response, in either protocol version.
+ *
+ * v2 puts the canonical copy in the base64 `PAYMENT-REQUIRED` header, so that
+ * wins when present; v1, and v2 servers that also echo it, put it in the JSON
+ * body. Returns null when what arrived is not an x402 quote at all, so a 402
+ * from some other kind of paywall is handed back untouched.
+ */
+export function parsePaymentRequired(
+  body: unknown,
+  headers?: { get(name: string): string | null },
+): PaymentRequiredBody | null {
+  const fromHeader = headers?.get(PAYMENT_REQUIRED_HEADER);
+  const source = (fromHeader ? decodeHeader(fromHeader) : null) ?? body;
+
+  if (typeof source !== "object" || source === null) return null;
+  const v = source as Record<string, unknown>;
   const accepts = v["accepts"];
   if (!Array.isArray(accepts)) return null;
-  const valid = accepts.filter(isPaymentRequirements);
-  if (valid.length === 0) return null;
+
+  const top =
+    typeof v["resource"] === "object" && v["resource"] !== null
+      ? (v["resource"] as { url?: string; description?: string; mimeType?: string })
+      : undefined;
+
+  const normalised: PaymentRequirements[] = [];
+  for (const entry of accepts) {
+    if (!isPaymentRequirements(entry)) continue;
+    const e = entry as Record<string, unknown>;
+    const amount = String(e["amount"] ?? e["maxAmountRequired"]);
+    // v1 repeats the resource in every entry; v2 states it once at the top.
+    const resource =
+      typeof e["resource"] === "string" ? e["resource"] : (top?.url ?? "");
+
+    normalised.push({
+      scheme: String(e["scheme"]),
+      network: String(e["network"]),
+      amount,
+      asset: typeof e["asset"] === "string" ? e["asset"] : "",
+      payTo: String(e["payTo"]),
+      resource,
+      description:
+        typeof e["description"] === "string" ? e["description"] : (top?.description ?? ""),
+      ...(typeof e["mimeType"] === "string"
+        ? { mimeType: e["mimeType"] }
+        : top?.mimeType
+          ? { mimeType: top.mimeType }
+          : {}),
+      ...(e["outputSchema"] !== undefined ? { outputSchema: e["outputSchema"] } : {}),
+      maxTimeoutSeconds: typeof e["maxTimeoutSeconds"] === "number" ? e["maxTimeoutSeconds"] : 60,
+      ...(typeof e["extra"] === "object" && e["extra"] !== null
+        ? { extra: e["extra"] as Record<string, unknown> }
+        : {}),
+      raw: e,
+    });
+  }
+  if (normalised.length === 0) return null;
+
   return {
     x402Version: typeof v["x402Version"] === "number" ? v["x402Version"] : 1,
     error: typeof v["error"] === "string" ? v["error"] : "payment required",
-    accepts: valid,
+    accepts: normalised,
+    ...(top?.url ? { resource: { url: top.url, ...(top.description ? { description: top.description } : {}), ...(top.mimeType ? { mimeType: top.mimeType } : {}) } } : {}),
   };
 }
 
@@ -117,9 +186,9 @@ export function quoteToInvoice(
   return {
     poId: mandate.id,
     vendor: mandate.vendor,
-    payee: requirements.payTo as Invoice["payee"],
+    payee: payeeAddress(requirements.payTo) as Invoice["payee"],
     qty,
-    unitPrice: BigInt(requirements.maxAmountRequired),
+    unitPrice: BigInt(requirements.amount),
     invoiceHash: quoteHash(requirements, options.nonce, options.keccak256),
     nonce: options.nonce,
     deadline:

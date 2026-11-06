@@ -25,7 +25,7 @@
 
 import { evaluate, type Bytes32, type Decision, type Invoice, type PurchaseOrder, type Roles } from "@zowall/gate-core";
 
-import { normaliseResource, quoteToInvoice, type Keccak256 } from "./quote.ts";
+import { normaliseResource, payeeAddress, quoteToInvoice, type Keccak256 } from "./quote.ts";
 import type { PaymentRequirements } from "./types.ts";
 
 export type GuardDecision = {
@@ -150,9 +150,9 @@ function syntheticInvoice(
   return {
     poId: 0n,
     vendor: zeroAddress,
-    payee: requirements.payTo as Invoice["payee"],
+    payee: payeeAddress(requirements.payTo) as Invoice["payee"],
     qty,
-    unitPrice: BigInt(requirements.maxAmountRequired),
+    unitPrice: BigInt(requirements.amount),
     invoiceHash: zeroHash,
     nonce,
     deadline: 0n,

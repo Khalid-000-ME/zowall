@@ -19,28 +19,44 @@
  * Everything that is not a 402 passes through untouched, so wrapping a client
  * costs nothing on free endpoints and the agent's existing code does not
  * change. An x402 client library still does the paying: this never sees a key.
+ *
+ * It speaks both protocol versions. Which one a server uses decides the header
+ * the paid retry is sent in, and nothing else.
  */
 
 import type { GuardDecision } from "./guard.ts";
+import { parsePaymentRequired } from "./quote.ts";
 import {
   PAYMENT_HEADER,
   PAYMENT_RESPONSE_HEADER,
+  PAYMENT_RESPONSE_HEADER_V1,
+  PAYMENT_SIGNATURE_HEADER,
+  decodeHeader,
+  encodeHeader,
+  type PaymentRequiredBody,
   type PaymentRequirements,
   type SettlementResponse,
 } from "./types.ts";
-import { parsePaymentRequired } from "./quote.ts";
 
 export type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+
+/**
+ * What the signer hands back. A string is a finished header value and is sent
+ * as it is. An object is the scheme-specific `payload`, which the middleware
+ * wraps in the envelope the protocol version calls for - so a signer written
+ * for one version does not have to know the envelope of the other.
+ */
+export type SignedPayment = string | { payload: Record<string, unknown> };
 
 export type ZowallMiddlewareConfig = {
   /** the gate. Anything with a `check` of this shape will do. */
   guard: { check: (r: PaymentRequirements, o?: { qty?: bigint }) => Promise<GuardDecision> };
   /**
-   * Produces the `X-PAYMENT` header value for an approved quote. This is the
-   * x402 client's job - wallet, scheme and signing all stay on its side of the
-   * boundary, and this package never holds a key.
+   * Produces the payment for an approved quote. This is the x402 client's job -
+   * wallet, scheme and signing all stay on its side of the boundary, and this
+   * package never holds a key.
    */
-  signPayment: (requirements: PaymentRequirements) => Promise<string>;
+  signPayment: (requirements: PaymentRequirements) => Promise<SignedPayment>;
   /** defaults to global fetch */
   fetch?: FetchLike;
   /** which of the offered requirements to use. Defaults to the first. */
@@ -83,7 +99,7 @@ export function withZowall(config: ZowallMiddlewareConfig): FetchLike {
       .clone()
       .json()
       .catch(() => null);
-    const quote = parsePaymentRequired(body);
+    const quote = parsePaymentRequired(body, first.headers);
     if (!quote) return first;
 
     const requirements = select(quote.accepts);
@@ -100,8 +116,9 @@ export function withZowall(config: ZowallMiddlewareConfig): FetchLike {
       return refusalResponse(decision, quote.x402Version);
     }
 
-    const header = await config.signPayment(requirements);
-    const paid = await inner(input, withHeader(init, PAYMENT_HEADER, header));
+    const signed = await config.signPayment(requirements);
+    const { name, value } = paymentHeader(signed, quote, requirements);
+    const paid = await inner(input, withHeader(init, name, value));
 
     const settlement = readSettlement(paid);
     if (settlement && config.onSettled) {
@@ -114,6 +131,33 @@ export function withZowall(config: ZowallMiddlewareConfig): FetchLike {
 
     return paid;
   };
+}
+
+/** The request header, and its value, for this protocol version. */
+function paymentHeader(
+  signed: SignedPayment,
+  quote: PaymentRequiredBody,
+  requirements: PaymentRequirements,
+): { name: string; value: string } {
+  const v2 = quote.x402Version >= 2;
+  const name = v2 ? PAYMENT_SIGNATURE_HEADER : PAYMENT_HEADER;
+  if (typeof signed === "string") return { name, value: signed };
+
+  const accepted = requirements.raw ?? requirements;
+  const envelope = v2
+    ? {
+        x402Version: quote.x402Version,
+        resource: quote.resource ?? { url: requirements.resource, description: requirements.description },
+        accepted,
+        payload: signed.payload,
+      }
+    : {
+        x402Version: 1,
+        scheme: requirements.scheme,
+        network: requirements.network,
+        payload: signed.payload,
+      };
+  return { name, value: encodeHeader(envelope) };
 }
 
 /**
@@ -132,7 +176,7 @@ function refusalResponse(decision: GuardDecision, version: number): Response {
         outcome: decision.decision.outcome,
         codes: decision.decision.codes,
         mandate: decision.mandate ? decision.mandate.id.toString() : null,
-        quotedAmount: decision.requirements.maxAmountRequired,
+        quotedAmount: decision.requirements.amount,
         payTo: decision.requirements.payTo,
         resource: decision.requirements.resource,
         violations: decision.decision.violations.map((v) => ({
@@ -156,16 +200,9 @@ function withHeader(init: RequestInit | undefined, name: string, value: string):
 }
 
 function readSettlement(response: Response): SettlementResponse | null {
-  const raw = response.headers.get(PAYMENT_RESPONSE_HEADER);
+  const raw =
+    response.headers.get(PAYMENT_RESPONSE_HEADER) ?? response.headers.get(PAYMENT_RESPONSE_HEADER_V1);
   if (!raw) return null;
-  try {
-    const json = JSON.parse(
-      typeof atob === "function"
-        ? atob(raw)
-        : Buffer.from(raw, "base64").toString("utf8"),
-    ) as SettlementResponse;
-    return typeof json === "object" && json !== null ? json : null;
-  } catch {
-    return null;
-  }
+  const json = decodeHeader<SettlementResponse>(raw);
+  return typeof json === "object" && json !== null ? json : null;
 }

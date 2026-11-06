@@ -1,23 +1,36 @@
 /**
  * The x402 wire types, as the specification defines them.
  *
- * Copied field-for-field from the protocol spec rather than from a client
- * library, because this package has to understand a 402 that any server
- * produced, not only the ones a particular SDK emits. Field names and
- * optionality follow the v1 PaymentRequirements table exactly.
+ * Two protocol versions are in the field and both are read here:
+ *
+ *   v2 (current; what the Hedera facilitators run)
+ *     402 carries a base64 `PAYMENT-REQUIRED` header. `accepts[]` holds
+ *     `amount`, and `resource` sits once at the top level. The client replies
+ *     with a `PAYMENT-SIGNATURE` header holding a base64 payment payload, and
+ *     the server answers with `PAYMENT-RESPONSE`. Networks are CAIP-2
+ *     identifiers such as `hedera:testnet`.
+ *
+ *   v1 (legacy)
+ *     JSON body only. `accepts[]` holds `maxAmountRequired` and its own
+ *     `resource`. `X-PAYMENT` and `X-PAYMENT-RESPONSE` carry the rest.
+ *
+ * Whatever arrives is normalised to one shape, so nothing downstream - the
+ * guard, the engine mapping, the tests - has to care which dialect a server
+ * speaks. The original object is kept as `raw`, because a v2 payment payload
+ * must echo the requirement it accepted exactly as the server sent it.
  */
 
-/** One acceptable way to pay, from the `accepts` array of a 402 response. */
+/** One acceptable way to pay, normalised from either protocol version. */
 export type PaymentRequirements = {
   /** payment scheme identifier, e.g. "exact" */
   scheme: string;
-  /** network identifier, e.g. "hedera-testnet", "base-sepolia" */
+  /** network identifier, e.g. "hedera:testnet" (v2) or "base-sepolia" (v1) */
   network: string;
-  /** required amount in atomic token units, as a decimal string */
-  maxAmountRequired: string;
-  /** token contract address */
+  /** required amount in the asset's atomic units, as a decimal string */
+  amount: string;
+  /** token identifier: an HTS token id, a contract address, or "0.0.0" for HBAR */
   asset: string;
-  /** the address the money goes to */
+  /** the account the money goes to */
   payTo: string;
   /** URL of the protected resource */
   resource: string;
@@ -27,42 +40,68 @@ export type PaymentRequirements = {
   outputSchema?: unknown;
   /** seconds the server will wait for payment */
   maxTimeoutSeconds: number;
-  /** scheme-specific extras, e.g. the token name and version */
+  /** scheme-specific extras. On Hedera this carries the facilitator's `feePayer`. */
   extra?: Record<string, unknown>;
+  /** the object exactly as the server sent it */
+  raw?: Record<string, unknown>;
 };
 
-/** The body of a 402 response. */
+/** A 402 response, normalised. */
 export type PaymentRequiredBody = {
   x402Version: number;
   error: string;
   accepts: PaymentRequirements[];
+  resource?: { url: string; description?: string; mimeType?: string };
 };
 
 /**
- * What the resource server reports once it has settled, carried back in the
- * `X-PAYMENT-RESPONSE` header as base64 JSON. This is the closest thing x402
- * has to a delivery note, which is why the middleware records it.
+ * What the resource server reports once it has settled. Hedera reports a
+ * `transactionId` (`0.0.x@seconds.nanos`); EVM networks report `transaction`.
  */
 export type SettlementResponse = {
   success: boolean;
-  transaction: string;
+  transaction?: string;
+  transactionId?: string;
   network: string;
   payer: string;
   errorReason?: string;
 };
 
-export const PAYMENT_HEADER = "X-PAYMENT";
-export const PAYMENT_RESPONSE_HEADER = "X-PAYMENT-RESPONSE";
+/** v2 headers. */
+export const PAYMENT_REQUIRED_HEADER = "PAYMENT-REQUIRED";
+export const PAYMENT_SIGNATURE_HEADER = "PAYMENT-SIGNATURE";
+export const PAYMENT_RESPONSE_HEADER = "PAYMENT-RESPONSE";
 
-/** Narrowing guard: is this object shaped like a payment requirement? */
-export function isPaymentRequirements(value: unknown): value is PaymentRequirements {
+/** v1 headers. */
+export const PAYMENT_HEADER = "X-PAYMENT";
+export const PAYMENT_RESPONSE_HEADER_V1 = "X-PAYMENT-RESPONSE";
+
+/** The settled transaction's id, whichever field this network uses. */
+export function settlementTx(s: SettlementResponse): string {
+  return s.transactionId ?? s.transaction ?? "";
+}
+
+/** Narrowing guard: is this object shaped like a payment requirement, in either dialect? */
+export function isPaymentRequirements(value: unknown): value is Record<string, unknown> {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
   return (
     typeof v["scheme"] === "string" &&
     typeof v["network"] === "string" &&
-    typeof v["maxAmountRequired"] === "string" &&
-    typeof v["payTo"] === "string" &&
-    typeof v["resource"] === "string"
+    (typeof v["amount"] === "string" || typeof v["maxAmountRequired"] === "string") &&
+    typeof v["payTo"] === "string"
   );
+}
+
+/** base64 of a UTF-8 JSON value, with no dependence on a particular runtime. */
+export function encodeHeader(value: unknown): string {
+  return Buffer.from(JSON.stringify(value), "utf8").toString("base64");
+}
+
+export function decodeHeader<T = unknown>(raw: string): T | null {
+  try {
+    return JSON.parse(Buffer.from(raw, "base64").toString("utf8")) as T;
+  } catch {
+    return null;
+  }
 }

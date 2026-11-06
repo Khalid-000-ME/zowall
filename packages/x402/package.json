@@ -6,13 +6,15 @@
   "license": "MIT",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./hedera": "./src/hedera.ts"
   },
   "scripts": {
     "test": "node --test test/*.test.ts",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@zowall/gate-core": "workspace:*"
+    "@zowall/gate-core": "workspace:*",
+    "@hashgraph/sdk": "2.64.5"
   }
 }

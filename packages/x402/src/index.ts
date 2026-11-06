@@ -23,11 +23,13 @@ export {
   PaymentRefused,
   withZowall,
   type FetchLike,
+  type SignedPayment,
   type ZowallMiddlewareConfig,
 } from "./middleware.ts";
 export {
   normaliseResource,
   parsePaymentRequired,
+  payeeAddress,
   quoteHash,
   quoteToInvoice,
   resourceSpecHash,
@@ -35,8 +37,14 @@ export {
 } from "./quote.ts";
 export {
   PAYMENT_HEADER,
+  PAYMENT_REQUIRED_HEADER,
   PAYMENT_RESPONSE_HEADER,
+  PAYMENT_RESPONSE_HEADER_V1,
+  PAYMENT_SIGNATURE_HEADER,
+  decodeHeader,
+  encodeHeader,
   isPaymentRequirements,
+  settlementTx,
   type PaymentRequirements,
   type PaymentRequiredBody,
   type SettlementResponse,

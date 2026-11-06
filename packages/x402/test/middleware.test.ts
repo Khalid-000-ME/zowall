@@ -17,7 +17,16 @@ import type { Bytes32, PurchaseOrder, Roles } from "@zowall/gate-core";
 import { createGuard } from "../src/guard.ts";
 import { PaymentRefused, withZowall } from "../src/middleware.ts";
 import { normaliseResource, resourceSpecHash } from "../src/quote.ts";
-import { PAYMENT_HEADER, PAYMENT_RESPONSE_HEADER, type PaymentRequirements } from "../src/types.ts";
+import {
+  PAYMENT_HEADER,
+  PAYMENT_REQUIRED_HEADER,
+  PAYMENT_RESPONSE_HEADER,
+  PAYMENT_RESPONSE_HEADER_V1,
+  PAYMENT_SIGNATURE_HEADER,
+  encodeHeader,
+  type PaymentRequirements,
+} from "../src/types.ts";
+import { parsePaymentRequired } from "../src/quote.ts";
 
 /*
  * A stand-in hash. This package never puts a digest on a chain - it only has
@@ -66,7 +75,7 @@ function quote(overrides: Partial<PaymentRequirements> = {}): PaymentRequirement
   return {
     scheme: "exact",
     network: "hedera-testnet",
-    maxAmountRequired: "10000",
+    amount: "10000",
     asset: "0.0.429274",
     payTo: PAYEE,
     resource: RESOURCE,
@@ -115,13 +124,13 @@ test("a payee swapped at quote time is refused", async () => {
 
 test("a price raised beyond tolerance after the mandate is not paid", async () => {
   // 0.02 against an agreed 0.01 with 5% tolerance.
-  const d = await guardFor(mandate()).check(quote({ maxAmountRequired: "20000" }));
+  const d = await guardFor(mandate()).check(quote({ amount: "20000" }));
   assert.equal(d.allowed, false);
   assert.ok(d.decision.codes.includes("PRICE_OVER_TOLERANCE"));
 });
 
 test("a price inside tolerance still pays", async () => {
-  const d = await guardFor(mandate()).check(quote({ maxAmountRequired: "10400" }));
+  const d = await guardFor(mandate()).check(quote({ amount: "10400" }));
   assert.equal(d.allowed, true);
 });
 
@@ -148,7 +157,7 @@ test("an expired mandate stops the agent", async () => {
 
 test("every failing code comes back, not just the first", async () => {
   const d = await guardFor(mandate({ expiry: NOW - 1n })).check(
-    quote({ payTo: ATTACKER, maxAmountRequired: "99999" }),
+    quote({ payTo: ATTACKER, amount: "99999" }),
   );
   assert.ok(d.decision.codes.length > 1, `expected several codes, got ${d.decision.codes.join(",")}`);
   assert.ok(d.decision.codes.includes("PAYEE_MISMATCH"));
@@ -278,14 +287,14 @@ test("what settled is reported back with the decision that allowed it", async ()
     guard: guardFor(mandate()),
     signPayment: async () => "base64-payment",
     onSettled: (s, d) => {
-      recorded = { tx: s.transaction, codes: d.decision.codes };
+      recorded = { tx: s.transaction ?? "", codes: d.decision.codes };
     },
     fetch: async (_input, init) =>
       new Headers(init?.headers).get(PAYMENT_HEADER)
         ? new Response("ok", {
             status: 200,
             headers: {
-              [PAYMENT_RESPONSE_HEADER]: Buffer.from(JSON.stringify(settlement)).toString("base64"),
+              [PAYMENT_RESPONSE_HEADER_V1]: Buffer.from(JSON.stringify(settlement)).toString("base64"),
             },
           })
         : paymentRequired(quote()),
