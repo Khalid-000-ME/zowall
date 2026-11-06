@@ -289,14 +289,13 @@ a {
   z-index: -1;
 }
 
-/* Keeps the words readable without flattening the art.
-   Weighted to the left, where the copy sits, so the right half of the band
-   shows the glyphs at close to full strength. */
+/* Keeps the words readable without flattening the art. Centred behind the
+   copy, so the glyphs show at close to full strength toward the edges. */
 .hero-dim {
   position: absolute;
   inset: 0;
   background: radial-gradient(
-    ellipse 60% 70% at 24% 50%,
+    ellipse 62% 62% at 50% 46%,
     rgba(3, 7, 18, 0.92) 0%,
     rgba(3, 7, 18, 0.64) 42%,
     rgba(3, 7, 18, 0.1) 100%
@@ -306,6 +305,10 @@ a {
 .hero-body {
   position: relative;
   padding-block: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 
 .hero-eyebrow {
@@ -324,6 +327,17 @@ a {
   color: var(--ink);
 }
 
+/* The hero headline is Geist Pixel. It is a display face with wide, blocky
+   glyphs, so the tracking is opened up and the size pulled in from the sans
+   setting it replaces. */
+.land .hero-title {
+  font-family: var(--font-geist-pixel-square), var(--font-ui), ui-monospace, monospace;
+  font-size: clamp(2.4rem, 6.2vw, 4.8rem);
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  max-width: 16ch;
+}
+
 .hero-sub {
   font-family: var(--font-display), Georgia, serif;
   font-size: clamp(1.1rem, 2.6vw, 1.6rem);
@@ -337,10 +351,12 @@ a {
   font-size: 17px;
   line-height: 1.6;
   margin-top: 0;
+  margin-inline: auto;
 }
 
 .hero-actions {
   display: flex;
+  justify-content: center;
   gap: var(--space-3);
   margin-top: var(--space-6);
   flex-wrap: wrap;
@@ -380,6 +396,7 @@ a {
   align-items: center;
   gap: var(--space-6);
   flex-wrap: wrap;
+  justify-content: center;
   margin-top: var(--space-8);
 }
 
@@ -500,6 +517,30 @@ a {
   font-size: 15px;
   line-height: 1.6;
   color: var(--mute);
+}
+
+/* A sponsor mark inline with the feature that uses it. Quiet at rest. */
+.land-card-mark {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+  text-decoration: none;
+  font-size: 12.5px;
+  color: var(--mute);
+  opacity: 0.75;
+  transition: opacity 160ms ease-out;
+}
+
+.land-card-mark:hover,
+.land-card-mark:focus-visible {
+  opacity: 1;
+}
+
+.land-card-mark img {
+  display: block;
 }
 
 /* -------------------------------------------------------- the rules table -- */
