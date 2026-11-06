@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Instrument_Serif, JetBrains_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 const display = Instrument_Serif({
@@ -12,6 +12,17 @@ const display = Instrument_Serif({
 const body = Bricolage_Grotesque({
   subsets: ["latin"],
   variable: "--font-body",
+  display: "swap",
+});
+
+/*
+ * The product UI only. The marketing pages and the explainer keep Instrument
+ * Serif and Bricolage; the workspace is a tool, and a neutral grotesk is what
+ * stops a dense table of amounts from looking styled.
+ */
+const ui = Inter({
+  subsets: ["latin"],
+  variable: "--font-ui",
   display: "swap",
 });
 
@@ -30,7 +41,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable}`}>
+    <html lang="en" className={`${display.variable} ${body.variable} ${ui.variable} ${mono.variable}`}>
       <body>{children}</body>
     </html>
   );

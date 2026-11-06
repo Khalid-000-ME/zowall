@@ -1,0 +1,545 @@
+/*
+ * The workspace design system.
+ *
+ * Separate from the explainer's styles on purpose: the two surfaces are
+ * different products to a visitor, and sharing a stylesheet is how they would
+ * quietly drift back into looking like one. Everything here is prefixed `ui-`
+ * and nothing outside app/app/ should use it.
+ *
+ * The shapes - a numbered list with hairline rules, four even bordered tiles,
+ * a large flat heading against small muted copy - come from the reference
+ * layout. Colour, radius and spacing still come from the app tokens, so the
+ * workspace follows the theme rather than inventing a second palette.
+ */
+
+.ui {
+  font-family: var(--font-ui), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.006em;
+}
+
+/* Headings here are the UI face, not the serif the explainer uses. */
+.ui h1,
+.ui h2,
+.ui h3,
+.ui h4 {
+  font-family: var(--font-ui), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 450;
+  letter-spacing: -0.022em;
+  margin: 0;
+}
+
+/* --------------------------------- shell --------------------------------- */
+
+.ui-shell {
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr);
+  min-height: 100dvh;
+}
+
+.ui-side {
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  padding: var(--space-5) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  overflow-y: auto;
+}
+
+.ui-side-group {
+  display: grid;
+  gap: 2px;
+}
+
+.ui-side-label {
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding: 0 10px var(--space-2);
+}
+
+.ui-side a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: background 140ms ease-out, color 140ms ease-out;
+}
+
+.ui-side a:hover {
+  background: var(--surface-sunken);
+  color: var(--text);
+}
+
+.ui-side a[aria-current="page"] {
+  background: var(--surface-sunken);
+  color: var(--text);
+}
+
+.ui-main {
+  min-width: 0;
+  padding: var(--space-7) var(--space-6) var(--space-8);
+}
+
+.ui-main-inner {
+  width: min(960px, 100%);
+}
+
+@media (max-width: 860px) {
+  .ui-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ui-side {
+    position: static;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-4);
+    overflow-x: auto;
+  }
+
+  .ui-side-group {
+    grid-auto-flow: column;
+    gap: 2px;
+  }
+
+  .ui-side-label {
+    display: none;
+  }
+
+  .ui-main {
+    padding: var(--space-5) var(--space-4) var(--space-7);
+  }
+}
+
+/* ------------------------------- type scale ------------------------------ */
+
+.ui-display {
+  font-size: clamp(2rem, 4.4vw, 2.9rem);
+  line-height: 1.08;
+  max-width: 16ch;
+}
+
+.ui-title {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  line-height: 1.15;
+}
+
+.ui-lede {
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1.6;
+  max-width: 58ch;
+  margin: var(--space-3) 0 0;
+}
+
+.ui-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 0 0 var(--space-3);
+}
+
+.ui-muted {
+  color: var(--text-muted);
+}
+
+.ui-faint {
+  color: var(--text-faint);
+}
+
+/* ------------------------------- sections -------------------------------- */
+
+.ui-section {
+  padding-block: var(--space-7);
+}
+
+.ui-section + .ui-section {
+  border-top: 1px solid var(--border);
+}
+
+/* A wide heading column beside the content, as in the reference layout. */
+.ui-split {
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  gap: var(--space-7);
+  align-items: start;
+}
+
+@media (max-width: 760px) {
+  .ui-split {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+  }
+}
+
+/* ----------------------------- numbered list ----------------------------- */
+
+.ui-numlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+}
+
+.ui-numrow {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: 17px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ui-numrow-n {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11.5px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.ui-numrow-label {
+  font-size: 17px;
+  line-height: 1.35;
+  letter-spacing: -0.014em;
+}
+
+.ui-numrow-note {
+  font-size: 13px;
+  color: var(--text-faint);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.ui-numrow-sub {
+  grid-column: 2 / -1;
+  font-size: 13.5px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+@media (max-width: 560px) {
+  .ui-numrow {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+
+  .ui-numrow-note {
+    grid-column: 2;
+    text-align: left;
+    margin-top: 4px;
+  }
+}
+
+/* --------------------------------- tiles --------------------------------- */
+
+.ui-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--space-4);
+}
+
+.ui-tile {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.ui-tile--fill {
+  border-color: transparent;
+  background: var(--surface-sunken);
+}
+
+.ui-tile-title {
+  font-size: 15px;
+  letter-spacing: -0.012em;
+}
+
+.ui-tile-body {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ------------------------------ stat figures ----------------------------- */
+
+.ui-stat {
+  display: grid;
+  gap: 4px;
+}
+
+.ui-stat-value {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+}
+
+.ui-stat-label {
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* ---------------------------------- tabs --------------------------------- */
+
+.ui-tabs {
+  display: flex;
+  gap: var(--space-5);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.ui-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 1px 13px;
+  font-size: 14px;
+  color: var(--text-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  border-bottom: 1.5px solid transparent;
+  margin-bottom: -1px;
+  transition: color 140ms ease-out, border-color 140ms ease-out;
+}
+
+.ui-tab:hover {
+  color: var(--text);
+}
+
+.ui-tab[aria-current="page"] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+/* A tab that switches a panel rather than navigating is still a tab. */
+button.ui-tab {
+  background: none;
+  border: 0;
+  border-bottom: 1.5px solid transparent;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* The step number doubles as the done marker, so a tab never needs an icon. */
+.ui-tab-n {
+  display: inline-grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+.ui-tab[aria-current="page"] .ui-tab-n {
+  border-color: var(--text);
+  color: var(--text);
+}
+
+.ui-tab-n--done {
+  background: var(--paid);
+  border-color: var(--paid);
+  color: var(--surface);
+}
+
+/* --------------------------------- panels -------------------------------- */
+
+.ui-panel {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: var(--space-5);
+}
+
+.ui-panel--sunken {
+  background: var(--surface-sunken);
+  border-color: transparent;
+}
+
+.ui-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 13px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.ui-row:last-child {
+  border-bottom: 0;
+}
+
+/* --------------------------------- buttons ------------------------------- */
+
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 9px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 140ms ease-out, border-color 140ms ease-out, opacity 140ms ease-out;
+}
+
+.ui-btn:hover:not(:disabled) {
+  background: var(--surface-sunken);
+}
+
+.ui-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ui-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.ui-btn--primary:hover:not(:disabled) {
+  background: var(--accent);
+  opacity: 0.88;
+}
+
+.ui-actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* --------------------------------- chips --------------------------------- */
+
+.ui-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.ui-chip--ok {
+  background: var(--paid-bg);
+  color: var(--paid);
+}
+
+.ui-chip--held {
+  background: var(--held-bg);
+  color: var(--held);
+}
+
+.ui-chip--bad {
+  background: var(--rejected-bg);
+  color: var(--rejected);
+}
+
+.ui-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* --------------------------------- code ---------------------------------- */
+
+.ui-code {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12.5px;
+  line-height: 1.7;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  margin: 0;
+  white-space: pre;
+}
+
+.ui-mono {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
+}
+
+/* -------------------------------- tables --------------------------------- */
+
+.ui-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.ui-table th {
+  text-align: left;
+  font-weight: 450;
+  font-size: 11px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding: 0 var(--space-4) 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.ui-table td {
+  padding: 13px var(--space-4) 13px 0;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.ui-table tr:last-child td {
+  border-bottom: 0;
+}
+
+/* -------------------------------- notices -------------------------------- */
+
+.ui-note {
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--border-strong);
+  border-radius: 0 10px 10px 0;
+  padding: 12px 16px;
+  font-size: 13.5px;
+  color: var(--text-muted);
+  background: var(--surface);
+}
+
+.ui-note--warn {
+  border-left-color: var(--held);
+  background: var(--held-bg);
+  color: var(--held);
+  border-color: transparent;
+}
