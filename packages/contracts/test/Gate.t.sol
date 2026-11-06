@@ -47,7 +47,9 @@ contract GateTest is Test {
         attacker = vm.addr(ATTACKER_PK);
 
         usdt = new MockUSDT();
-        gate = new ZowallGate(IERC20(address(usdt)), attestor);
+        address[] memory set = new address[](1);
+        set[0] = attestor;
+        gate = new ZowallGate(IERC20(address(usdt)), set, 1);
         usdt.mint(address(gate), 10_000_000_000); // 10,000 USDT treasury
         vm.warp(1_800_000_000);
     }
@@ -170,7 +172,7 @@ contract GateTest is Test {
         _receive(poId, 100);
         _submit(_invoice(poId, 100, 46_000_000, payee, 1), VENDOR_PK); // -> HELD
 
-        ZowallGate.Attestation memory a = _attest(ALICE, ZowallGate.Role.Approver, poId);
+        ZowallGate.Attestation memory a = _forHold(ALICE, poId, 1, true);
         vm.expectRevert(abi.encodeWithSelector(ZowallGate.SodViolation.selector, ALICE));
         gate.resolveHold(1, true, a);
 
@@ -183,7 +185,7 @@ contract GateTest is Test {
         _receive(poId, 100);
         _submit(_invoice(poId, 100, 46_000_000, payee, 1), VENDOR_PK);
 
-        ZowallGate.Attestation memory a = _attest(BOB, ZowallGate.Role.Approver, poId);
+        ZowallGate.Attestation memory a = _forHold(BOB, poId, 1, true);
         vm.expectRevert(abi.encodeWithSelector(ZowallGate.SodViolation.selector, BOB));
         gate.resolveHold(1, true, a);
         assertEq(usdt.balanceOf(payee), 0);
@@ -196,7 +198,7 @@ contract GateTest is Test {
         _receive(poId, 100);
         _submit(_invoice(poId, 100, 46_000_000, payee, 1), VENDOR_PK);
 
-        gate.resolveHold(1, false, _attest(CARA, ZowallGate.Role.Approver, poId));
+        gate.resolveHold(1, false, _forHold(CARA, poId, 1, false));
 
         assertEq(usdt.balanceOf(payee), 0, "refused, nothing moved");
         assertTrue(gate.getHold(1).resolved);
@@ -212,7 +214,7 @@ contract GateTest is Test {
         // 120 units at 40 is 4,800 against a 4,200 reservation. A third human
         // accepting the variance amends the reservation by the 600 shortfall,
         // drawn from free balance and recorded in the event.
-        gate.resolveHold(1, true, _attest(CARA, ZowallGate.Role.Approver, poId));
+        gate.resolveHold(1, true, _forHold(CARA, poId, 1, true));
         assertEq(usdt.balanceOf(payee), uint256(120) * UNIT);
         assertEq(gate.totalEncumbered(), 0, "reservation settled and closed out");
     }
@@ -224,7 +226,7 @@ contract GateTest is Test {
         _receive(poId, 100);
         _submit(_invoice(poId, 100, 110_000_000, payee, 1), VENDOR_PK); // 11,000 asked
 
-        ZowallGate.Attestation memory a = _attest(CARA, ZowallGate.Role.Approver, poId);
+        ZowallGate.Attestation memory a = _forHold(CARA, poId, 1, true);
         vm.expectRevert(abi.encodeWithSelector(ZowallGate.ExceedsEncumbrance.selector, 11_000_000_000, 10_000_000_000));
         gate.resolveHold(1, true, a);
         assertEq(usdt.balanceOf(payee), 0);
@@ -236,7 +238,7 @@ contract GateTest is Test {
 
         // first half approved as an override at 60, eating 3,000 of 4,000
         _submit(_invoice(poId, 50, 60_000_000, payee, 1), VENDOR_PK);
-        gate.resolveHold(1, true, _attest(CARA, ZowallGate.Role.Approver, poId));
+        gate.resolveHold(1, true, _forHold(CARA, poId, 1, true));
         assertEq(usdt.balanceOf(payee), 3_000_000_000);
 
         // the remaining 50 units at the agreed price need 2,000; 1,000 is left
@@ -267,7 +269,7 @@ contract GateTest is Test {
         _openPO();
         _openPO();
         ZowallGate.POInput memory input = _input(QTY, UNIT, 500, 0, uint64(block.timestamp + 86_400));
-        ZowallGate.Attestation memory a = _attest(ALICE, ZowallGate.Role.Creator, 0);
+        ZowallGate.Attestation memory a = _forCreate(ALICE);
         vm.expectRevert(
             abi.encodeWithSelector(ZowallGate.NotEnoughBalanceToEncumber.selector, ENCUMBERED * 3, 10_000_000_000)
         );
@@ -277,7 +279,7 @@ contract GateTest is Test {
     function test_cancelReleasesTheReservation() public {
         uint256 poId = _openPO();
         assertEq(gate.totalEncumbered(), ENCUMBERED);
-        gate.cancelPO(poId, _attest(ALICE, ZowallGate.Role.Creator, poId));
+        gate.cancelPO(poId, _forCancel(ALICE, poId));
         assertEq(gate.totalEncumbered(), 0);
         assertEq(gate.unencumberedBalance(), 10_000_000_000);
     }
@@ -287,7 +289,7 @@ contract GateTest is Test {
         // them, and "the funds are reserved before you ship" stops being true.
         uint256 poId = _openPO();
 
-        ZowallGate.Attestation memory bob = _attest(BOB, ZowallGate.Role.Creator, poId);
+        ZowallGate.Attestation memory bob = _forCancel(BOB, poId);
         vm.expectRevert(abi.encodeWithSelector(ZowallGate.NotPOCreator.selector, BOB));
         gate.cancelPO(poId, bob);
 
@@ -297,7 +299,7 @@ contract GateTest is Test {
     function test_cancelNeedsARealAttestation() public {
         uint256 poId = _openPO();
 
-        ZowallGate.Attestation memory forged = _attest(ALICE, ZowallGate.Role.Creator, poId);
+        ZowallGate.Attestation memory forged = _forCancel(ALICE, poId);
         forged.sig = _sign(ATTACKER_PK, _attestStructHash(forged));
 
         vm.expectRevert(ZowallGate.BadAttestation.selector);
@@ -307,14 +309,14 @@ contract GateTest is Test {
 
     function test_receiverCannotBeThePOCreator() public {
         uint256 poId = _openPO();
-        ZowallGate.Attestation memory a = _attest(ALICE, ZowallGate.Role.Receiver, poId);
+        ZowallGate.Attestation memory a = _forReceipt(ALICE, poId, 100, keccak256("d"));
         vm.expectRevert(abi.encodeWithSelector(ZowallGate.SodViolation.selector, ALICE));
         gate.attestReceipt(poId, 100, keccak256("d"), a);
     }
 
     function test_attestationCannotBeReplayed() public {
         uint256 poId = _openPO();
-        ZowallGate.Attestation memory a = _attest(BOB, ZowallGate.Role.Receiver, poId);
+        ZowallGate.Attestation memory a = _forReceipt(BOB, poId, 50, keccak256("d"));
         gate.attestReceipt(poId, 50, keccak256("d"), a);
 
         vm.expectRevert(ZowallGate.AttestationReplayed.selector);
@@ -322,7 +324,7 @@ contract GateTest is Test {
     }
 
     function test_attestationMustComeFromTheAttestorKey() public {
-        ZowallGate.Attestation memory a = _attest(ALICE, ZowallGate.Role.Creator, 0);
+        ZowallGate.Attestation memory a = _forCreate(ALICE);
         a.sig = _sign(ATTACKER_PK, _attestStructHash(a)); // forged by someone else
 
         ZowallGate.POInput memory input = _input(QTY, UNIT, 500, 0, uint64(block.timestamp + 86_400));
@@ -331,7 +333,7 @@ contract GateTest is Test {
     }
 
     function test_expiredAttestationIsRefused() public {
-        ZowallGate.Attestation memory a = _attest(ALICE, ZowallGate.Role.Creator, 0);
+        ZowallGate.Attestation memory a = _forCreate(ALICE);
         vm.warp(block.timestamp + 1200);
         ZowallGate.POInput memory input = _input(QTY, UNIT, 500, 0, uint64(block.timestamp + 86_400));
         vm.expectRevert(ZowallGate.AttestationExpired.selector);
@@ -429,11 +431,38 @@ contract GateTest is Test {
 
     function _openPO() private returns (uint256) {
         return gate.createPO(
-            _input(QTY, UNIT, 500, 0, uint64(block.timestamp + 86_400)), _attest(ALICE, ZowallGate.Role.Creator, 0)
+            _input(QTY, UNIT, 500, 0, uint64(block.timestamp + 86_400)), _forCreate(ALICE)
         );
     }
 
-    function _attest(bytes32 personId, ZowallGate.Role role, uint256 poId)
+    function _forCreate(bytes32 pid) private returns (ZowallGate.Attestation memory) {
+        return _attest(
+            pid,
+            ZowallGate.Role.Creator,
+            0,
+            gate.createActionHash(_input(QTY, UNIT, 500, 0, uint64(block.timestamp + 86_400)))
+        );
+    }
+
+    function _forCancel(bytes32 pid, uint256 poId) private returns (ZowallGate.Attestation memory) {
+        return _attest(pid, ZowallGate.Role.Creator, poId, gate.cancelActionHash(poId));
+    }
+
+    function _forReceipt(bytes32 pid, uint256 poId, uint128 qty, bytes32 deliverable)
+        private
+        returns (ZowallGate.Attestation memory)
+    {
+        return _attest(pid, ZowallGate.Role.Receiver, poId, gate.receiptActionHash(poId, qty, deliverable));
+    }
+
+    function _forHold(bytes32 pid, uint256 poId, uint256 holdId, bool approve)
+        private
+        returns (ZowallGate.Attestation memory)
+    {
+        return _attest(pid, ZowallGate.Role.Approver, poId, gate.holdActionHash(holdId, approve));
+    }
+
+    function _attest(bytes32 personId, ZowallGate.Role role, uint256 poId, bytes32 action)
         private
         returns (ZowallGate.Attestation memory a)
     {
@@ -442,6 +471,7 @@ contract GateTest is Test {
             role: uint8(role),
             expiry: uint64(block.timestamp + 600),
             poId: poId,
+            actionHash: action,
             nonce: ++attestNonce,
             sig: ""
         });
@@ -451,11 +481,12 @@ contract GateTest is Test {
     function _attestStructHash(ZowallGate.Attestation memory a) private pure returns (bytes32) {
         return keccak256(
             abi.encode(
-                keccak256("Attestation(bytes32 personId,uint8 role,uint64 expiry,uint256 poId,uint256 nonce)"),
+                keccak256("Attestation(bytes32 personId,uint8 role,uint64 expiry,uint256 poId,bytes32 actionHash,uint256 nonce)"),
                 a.personId,
                 a.role,
                 a.expiry,
                 a.poId,
+                a.actionHash,
                 a.nonce
             )
         );
@@ -504,7 +535,7 @@ contract GateTest is Test {
     }
 
     function _receive(uint256 poId, uint128 qty) private {
-        gate.attestReceipt(poId, qty, keccak256("delivered"), _attest(BOB, ZowallGate.Role.Receiver, poId));
+        gate.attestReceipt(poId, qty, keccak256("delivered"), _forReceipt(BOB, poId, qty, keccak256("delivered")));
     }
 
     function _submit(ZowallGate.Invoice memory inv, uint256 pk) private returns (MatchEngine.Outcome) {

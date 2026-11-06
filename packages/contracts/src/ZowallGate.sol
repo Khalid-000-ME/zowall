@@ -79,6 +79,13 @@ contract ZowallGate {
         uint8 role;
         uint64 expiry;
         uint256 poId;
+        /// @dev Commits the attestation to the exact action it authorises: the
+        ///      PO terms, the quantity received, the hold and the verdict. The
+        ///      contract recomputes it from the call's own arguments. Without
+        ///      this an attestation is a bearer token for the role, and anyone
+        ///      reading the mempool could attach different arguments to it and
+        ///      spend it first.
+        bytes32 actionHash;
         /// @dev Makes two attestations for the same person, role and PO
         ///      distinct, so one human can raise two POs in a single block.
         uint256 nonce;
@@ -103,8 +110,13 @@ contract ZowallGate {
     /* ---------------------------------------------------------- storage -- */
 
     IERC20 public immutable usdt;
-    /// @notice Backend key that signs role attestations after World ID verify.
-    address public immutable attestor;
+    /// @notice The independent services that sign role attestations, each after
+    ///         verifying the World ID proof itself. An attestation counts only
+    ///         when at least `threshold` of them signed it, so no single
+    ///         compromised key can mint a person.
+    mapping(address => bool) public isAttestor;
+    address[] private _attestors;
+    uint8 public immutable threshold;
     bytes32 public immutable domainSeparator;
 
     uint256 public nextPoId = 1;
@@ -182,12 +194,16 @@ contract ZowallGate {
     error NotEnoughBalanceToEncumber(uint256 needed, uint256 available);
     error PONotOpen(uint256 poId);
     error BadAttestation();
+    /// @dev The attestor set cannot meet its own threshold, or contains a zero or duplicate address.
+    error BadQuorum(uint8 threshold, uint256 attestors);
     error AttestationExpired();
     error AttestationReplayed();
     error WrongRole(uint8 expected, uint8 got);
     error AttestationPOMismatch(uint256 expected, uint256 got);
     /// @dev Segregation of duties. The whole point of the control.
     error SodViolation(bytes32 personId);
+    /// @dev The attestation was signed for a different action than the one being attempted.
+    error ActionMismatch(bytes32 signed, bytes32 attempted);
     /// @dev Only the human who raised a purchase order may cancel it.
     error NotPOCreator(bytes32 personId);
     error HoldNotFound(uint256 holdId);
@@ -198,9 +214,19 @@ contract ZowallGate {
 
     /* ------------------------------------------------------------- init -- */
 
-    constructor(IERC20 _usdt, address _attestor) {
+    constructor(IERC20 _usdt, address[] memory attestors_, uint8 threshold_) {
+        // A threshold of zero, or one that cannot be met, would either accept
+        // unsigned attestations or lock the gate forever. Both are fatal and
+        // neither can be fixed after deployment, so refuse to deploy.
+        if (threshold_ == 0 || threshold_ > attestors_.length) revert BadQuorum(threshold_, attestors_.length);
+        for (uint256 i; i < attestors_.length; ++i) {
+            address who = attestors_[i];
+            if (who == address(0) || isAttestor[who]) revert BadQuorum(threshold_, attestors_.length);
+            isAttestor[who] = true;
+            _attestors.push(who);
+        }
+        threshold = threshold_;
         usdt = _usdt;
-        attestor = _attestor;
         domainSeparator = keccak256(
             abi.encode(
                 keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
@@ -217,7 +243,7 @@ contract ZowallGate {
     /// @notice Raise a purchase order and reserve its total against the vault.
     function createPO(POInput calldata po, Attestation calldata a) external returns (uint256 poId) {
         if (po.qty == 0) revert ZeroQuantity();
-        _useAttestation(a, Role.Creator, 0);
+        _useAttestation(a, Role.Creator, 0, createActionHash(po));
 
         // Reserve the tolerance ceiling, not the headline total. A 5%
         // tolerance means an invoice at 42 is legitimate, and a reservation of
@@ -269,7 +295,7 @@ contract ZowallGate {
         PurchaseOrder storage p = _pos[poId];
         if (p.status != MatchEngine.POStatus.Open) revert PONotOpen(poId);
 
-        _useAttestation(a, Role.Creator, poId);
+        _useAttestation(a, Role.Creator, poId, cancelActionHash(poId));
         if (a.personId != p.creatorPersonId) revert NotPOCreator(a.personId);
 
         uint256 released = p.encumbered;
@@ -290,7 +316,7 @@ contract ZowallGate {
         PurchaseOrder storage p = _pos[poId];
         if (p.status != MatchEngine.POStatus.Open) revert PONotOpen(poId);
         if (qty == 0) revert ZeroQuantity();
-        _useAttestation(a, Role.Receiver, poId);
+        _useAttestation(a, Role.Receiver, poId, receiptActionHash(poId, qty, deliverableHash));
 
         if (a.personId == p.creatorPersonId) revert SodViolation(a.personId);
 
@@ -366,7 +392,7 @@ contract ZowallGate {
         if (h.resolved) revert HoldAlreadyResolved(holdId);
 
         PurchaseOrder storage p = _pos[h.poId];
-        _useAttestation(a, Role.Approver, h.poId);
+        _useAttestation(a, Role.Approver, h.poId, holdActionHash(holdId, approve));
 
         if (a.personId == p.creatorPersonId || a.personId == p.receiverPersonId) {
             revert SodViolation(a.personId);
@@ -448,6 +474,42 @@ contract ZowallGate {
 
         bytes memory pre = _preimage(h.poId, h.invoiceHash, o, mask, p, h.qty, h.unitPrice, bytes32(0), h.nonce);
         emit Decision(h.poId, h.invoiceHash, o, mask, paid, holdId, keccak256(pre), pre);
+    }
+
+    /* ------------------------------------------------------ action hashes -- */
+
+    /// @notice What a creator attestation commits to. Public so the service that
+    ///         signs, and anyone auditing it, computes the identical value.
+    function createActionHash(POInput calldata po) public pure returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                keccak256("CreatePO"),
+                po.vendor,
+                po.payee,
+                po.specHash,
+                po.qty,
+                po.unitPrice,
+                po.priceTolBps,
+                po.qtyTolBps,
+                po.expiry
+            )
+        );
+    }
+
+    function cancelActionHash(uint256 poId) public pure returns (bytes32) {
+        return keccak256(abi.encode(keccak256("CancelPO"), poId));
+    }
+
+    function receiptActionHash(uint256 poId, uint128 qty, bytes32 deliverableHash) public pure returns (bytes32) {
+        return keccak256(abi.encode(keccak256("AttestReceipt"), poId, qty, deliverableHash));
+    }
+
+    function holdActionHash(uint256 holdId, bool approve) public pure returns (bytes32) {
+        return keccak256(abi.encode(keccak256("ResolveHold"), holdId, approve));
+    }
+
+    function attestors() external view returns (address[] memory) {
+        return _attestors;
     }
 
     /* ------------------------------------------------------------- views -- */
@@ -559,15 +621,38 @@ contract ZowallGate {
 
     /// @dev Verifies a role attestation and burns it, so one proof authorises
     ///      one action.
-    function _useAttestation(Attestation calldata a, Role role, uint256 poId) private {
+    function _useAttestation(Attestation calldata a, Role role, uint256 poId, bytes32 action) private {
         if (a.role != uint8(role)) revert WrongRole(uint8(role), a.role);
         if (block.timestamp > a.expiry) revert AttestationExpired();
         if (poId != 0 && a.poId != poId) revert AttestationPOMismatch(poId, a.poId);
+        if (a.actionHash != action) revert ActionMismatch(a.actionHash, action);
 
         bytes32 digest = _attestationDigest(a);
         if (attestationUsed[digest]) revert AttestationReplayed();
-        if (digest.tryRecover(a.sig) != attestor) revert BadAttestation();
+        if (!_quorumSigned(digest, a.sig)) revert BadAttestation();
         attestationUsed[digest] = true;
+    }
+
+    /**
+     * @dev `sigs` is the attestors' 65-byte signatures concatenated. Signers
+     *      must appear in strictly ascending address order, which makes
+     *      counting duplicates impossible: the same key twice is not ascending,
+     *      so it cannot be passed off as two attestors.
+     */
+    function _quorumSigned(bytes32 digest, bytes calldata sigs) private view returns (bool) {
+        if (sigs.length == 0 || sigs.length % 65 != 0) return false;
+        uint256 count = sigs.length / 65;
+        if (count < threshold) return false;
+
+        address last;
+        uint256 valid;
+        for (uint256 i; i < count; ++i) {
+            address signer = digest.tryRecover(sigs[i * 65:(i + 1) * 65]);
+            if (signer == address(0) || !isAttestor[signer] || signer <= last) return false;
+            last = signer;
+            ++valid;
+        }
+        return valid >= threshold;
     }
 
     bytes32 private constant INVOICE_TYPEHASH = keccak256(
@@ -575,7 +660,7 @@ contract ZowallGate {
     );
 
     bytes32 private constant ATTESTATION_TYPEHASH =
-        keccak256("Attestation(bytes32 personId,uint8 role,uint64 expiry,uint256 poId,uint256 nonce)");
+        keccak256("Attestation(bytes32 personId,uint8 role,uint64 expiry,uint256 poId,bytes32 actionHash,uint256 nonce)");
 
     function _invoiceDigest(Invoice memory inv) private view returns (bytes32) {
         return keccak256(
@@ -604,7 +689,7 @@ contract ZowallGate {
             abi.encodePacked(
                 "\x19\x01",
                 domainSeparator,
-                keccak256(abi.encode(ATTESTATION_TYPEHASH, a.personId, a.role, a.expiry, a.poId, a.nonce))
+                keccak256(abi.encode(ATTESTATION_TYPEHASH, a.personId, a.role, a.expiry, a.poId, a.actionHash, a.nonce))
             )
         );
     }

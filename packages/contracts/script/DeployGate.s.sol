@@ -19,7 +19,10 @@ import {ZowallGate} from "../src/ZowallGate.sol";
 contract DeployGate is Script {
     function run() external returns (ZowallGate gate) {
         address usdt = vm.envAddress("USDT_ADDRESS");
-        address attestor = vm.envAddress("ATTESTOR_ADDRESS");
+        // The attestors are a quorum of independent services. A comma-separated
+        // list, and the number of them that must agree.
+        address[] memory attestors = vm.envAddress("ATTESTOR_ADDRESSES", ",");
+        uint8 threshold = uint8(vm.envUint("ATTESTOR_THRESHOLD"));
 
         // Six decimals on Whitechain Sepolia. If this ever reads 18, every
         // amount in the app is wrong by a factor of a trillion, so fail loudly.
@@ -27,13 +30,16 @@ contract DeployGate is Script {
         require(decimals == 6, "USDT is not 6 decimals - check the address");
 
         vm.startBroadcast();
-        gate = new ZowallGate(IERC20(usdt), attestor);
+        gate = new ZowallGate(IERC20(usdt), attestors, threshold);
         vm.stopBroadcast();
 
         console.log("chainId      ", block.chainid);
         console.log("ZowallGate   ", address(gate));
         console.log("USDT         ", usdt);
-        console.log("attestor     ", attestor);
+        console.log("threshold    ", threshold);
+        for (uint256 i; i < attestors.length; ++i) {
+            console.log("attestor     ", attestors[i]);
+        }
         console.log("domainSep    ");
         console.logBytes32(gate.domainSeparator());
     }
