@@ -1,0 +1,18 @@
+{
+  "name": "@zowall/x402",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Middleware that puts a three-way match in front of an agent's x402 payments.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@zowall/gate-core": "workspace:*"
+  }
+}
