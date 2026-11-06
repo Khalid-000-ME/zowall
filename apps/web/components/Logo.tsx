@@ -27,7 +27,15 @@ export function Wordmark({ size = 22 }: { size?: number }) {
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 9 }}>
       <Logo size={size * 0.95} />
-      <span style={{ fontFamily: "var(--font-display)", fontSize: size, letterSpacing: "-0.01em" }}>
+      <span
+        style={{
+          fontFamily: "var(--font-brand), var(--font-display), sans-serif",
+          fontWeight: 700,
+          fontSize: size * 0.92,
+          letterSpacing: "-0.02em",
+          lineHeight: 1,
+        }}
+      >
         Zowall
       </span>
     </span>
