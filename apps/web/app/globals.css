@@ -112,7 +112,7 @@ body {
 h1,
 h2,
 h3 {
-  font-family: var(--font-display), Georgia, serif;
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
   font-weight: 400;
   letter-spacing: -0.01em;
   margin: 0;
@@ -222,14 +222,14 @@ a {
   color: var(--canvas);
 }
 
-/* Fala sets everything in one grotesk. The serif belongs to the explainer, so
-   every heading on this page is switched to the UI face. */
+/* Fala sets everything in one grotesk. Headings on this page use Space
+   Grotesk, the same face as the rest of the product's display type. */
 .land h1,
 .land h2,
 .land h3,
 .hero-sub,
 .land-wordmark {
-  font-family: var(--font-ui), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
   font-weight: 400;
 }
 
@@ -331,7 +331,7 @@ a {
    glyphs, so the tracking is opened up and the size pulled in from the sans
    setting it replaces. */
 .land .hero-title {
-  font-family: var(--font-geist-pixel-square), var(--font-ui), ui-monospace, monospace;
+  font-family: var(--font-geist-pixel-square), var(--font-display), ui-monospace, monospace;
   font-size: clamp(2.4rem, 6.2vw, 4.8rem);
   line-height: 1.08;
   letter-spacing: -0.01em;
@@ -339,7 +339,7 @@ a {
 }
 
 .hero-sub {
-  font-family: var(--font-display), Georgia, serif;
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
   font-size: clamp(1.1rem, 2.6vw, 1.6rem);
   color: var(--mute);
   margin: 0 0 var(--space-4);
@@ -600,7 +600,7 @@ a {
 }
 
 .land-wordmark {
-  font-family: var(--font-display), Georgia, serif;
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
   font-size: clamp(3rem, 14vw, 8rem);
   line-height: 0.9;
   color: var(--line);

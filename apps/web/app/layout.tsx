@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Instrument_Serif, Inter, JetBrains_Mono, Syne } from "next/font/google";
+import { Bricolage_Grotesque, Inter, JetBrains_Mono, Space_Grotesk, Syne } from "next/font/google";
 import { GeistPixelSquare } from "geist/font/pixel/square";
 
 import "./globals.css";
 
-const display = Instrument_Serif({
+const display = Space_Grotesk({
   subsets: ["latin"],
-  weight: "400",
   variable: "--font-display",
   display: "swap",
 });
@@ -18,8 +17,8 @@ const body = Bricolage_Grotesque({
 });
 
 /*
- * The product UI only. The marketing pages and the explainer keep Instrument
- * Serif and Bricolage; the workspace is a tool, and a neutral grotesk is what
+ * The product UI only. The marketing pages and the explainer keep Space
+ * Grotesk and Bricolage; the workspace is a tool, and a neutral grotesk is what
  * stops a dense table of amounts from looking styled.
  */
 const ui = Inter({
