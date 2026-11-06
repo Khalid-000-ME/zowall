@@ -1,17 +1,22 @@
-import { decodeTopic, hashscanTopicUrl, readTopic } from "@zowall/journal";
-
 import { Empty, Panel } from "@/components/Empty";
+import { Hash } from "@/components/Hash";
+import { OutcomeBadge } from "@/components/Outcome";
+import { ReplayButton } from "@/components/ReplayButton";
+import { getDecisions } from "@/lib/chain";
+import { hashscanTopic, txUrl } from "@/lib/chains";
 import { serverEnv } from "@/lib/env";
+import { getJournal } from "@/lib/journal-read";
+
+export const dynamic = "force-dynamic";
 
 /**
  * The journal, read live from a public Hedera mirror node.
  *
- * Nothing here comes from our own database, which is the point: this page is
- * showing the same thing a stranger sees running `journal replay`, and it
- * would keep working if our server were turned off.
+ * Nothing here comes from this app's own storage, which is the point: this page
+ * shows what a stranger sees running `journal replay`, and it would keep working
+ * if this server were turned off. Each decision is checked against the Whitechain
+ * log it describes, so a journal that drifted from the chain would show here.
  */
-export const dynamic = "force-dynamic";
-
 export default async function JournalPage() {
   const env = serverEnv();
 
@@ -24,73 +29,94 @@ export default async function JournalPage() {
     );
   }
 
-  let records: ReturnType<typeof decodeTopic>["records"] = [];
-  let error: string | null = null;
+  const [journal, decisions] = await Promise.all([
+    getJournal(true),
+    env.gateAddress ? getDecisions().catch(() => []) : [],
+  ]);
+  const chainByTx = new Map(decisions.map((d) => [d.txHash.toLowerCase(), d]));
+  const records = [...journal.records].reverse();
 
-  try {
-    const messages = await readTopic(env.hederaTopicId, { order: "desc", limit: 50 });
-    records = decodeTopic(messages).records;
-  } catch (err) {
-    error = err instanceof Error ? err.message : String(err);
-  }
+  const topicUrl = hashscanTopic(env.hederaTopicId);
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12, alignItems: "baseline" }}>
         <h1 style={{ fontSize: 30 }}>Journal</h1>
-        <a
-          href={hashscanTopicUrl(env.hederaTopicId)}
-          target="_blank"
-          rel="noreferrer"
-          className="mono"
-          style={{ fontSize: 14 }}
-        >
+        <a href={topicUrl} target="_blank" rel="noreferrer" className="mono" style={{ fontSize: 14 }}>
           {env.hederaTopicId} on HashScan
         </a>
       </div>
       <p style={{ color: "var(--text-muted)", maxWidth: "var(--measure)" }}>
-        Every decision, in the order consensus assigned. Only this service can write to the topic.
-        Anyone can read it, including you, without asking us.
+        Every decision, in the order consensus assigned. Only this service can write to the topic, and
+        it has no admin key, so it cannot be edited or deleted. Anyone can read it, including you,
+        without asking us.
       </p>
 
-      {error ? (
+      <div style={{ margin: "var(--space-5) 0" }}>
+        <ReplayButton topicUrl={topicUrl} />
+      </div>
+
+      {journal.error ? (
         <Panel title="Mirror node unreachable">
           <p className="mono" style={{ margin: 0, color: "var(--rejected)" }}>
-            {error}
+            {journal.error}
           </p>
         </Panel>
       ) : records.length === 0 ? (
         <Empty title="The topic exists but has no entries yet." />
       ) : (
         <ol style={{ listStyle: "none", padding: 0, display: "grid", gap: "var(--space-2)" }}>
-          {records.map((r) => (
-            <li
-              key={r.sequenceNumber}
-              style={{
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius-sm)",
-                padding: "var(--space-3)",
-                background: "var(--surface)",
-                display: "flex",
-                gap: "var(--space-3)",
-                flexWrap: "wrap",
-                alignItems: "baseline",
-              }}
-            >
-              <span className="mono" style={{ color: "var(--text-faint)" }}>
-                #{r.sequenceNumber}
-              </span>
-              <strong style={{ fontSize: 13 }}>{r.entry.kind}</strong>
-              <span className="mono" style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                po #{r.entry.po}
-              </span>
-              {r.entry.kind === "decision" ? (
-                <span className="mono" style={{ fontSize: 12 }}>
-                  {r.entry.outcome} {r.entry.codes.join(" ")}
+          {records.map((r) => {
+            const e = r.entry;
+            const chain = chainByTx.get(e.evm.tx.toLowerCase());
+            const agrees = chain ? chain.journalDigest.toLowerCase() === e.dig.toLowerCase() : null;
+
+            return (
+              <li
+                key={r.sequenceNumber}
+                style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-sm)",
+                  padding: "var(--space-3) var(--space-4)",
+                  background: "var(--surface)",
+                  display: "flex",
+                  gap: "var(--space-4)",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                }}
+              >
+                <span className="mono" style={{ color: "var(--text-faint)", minWidth: 36 }}>
+                  #{r.sequenceNumber}
                 </span>
-              ) : null}
-            </li>
-          ))}
+                <span style={{ fontSize: 13, minWidth: 100 }}>{e.kind.replace("_", " ")}</span>
+                <span className="mono" style={{ fontSize: 12, color: "var(--text-muted)", minWidth: 48 }}>
+                  po #{e.po}
+                </span>
+
+                {e.kind === "decision" ? (
+                  <>
+                    <OutcomeBadge outcome={e.outcome} />
+                    <span className="mono" style={{ fontSize: 12 }}>
+                      {e.codes.join(" ") || "clean"}
+                    </span>
+                  </>
+                ) : null}
+
+                <span style={{ marginLeft: "auto", display: "inline-flex", gap: 12, alignItems: "center", fontSize: 13 }}>
+                  <Hash value={e.evm.tx} href={txUrl(e.evm.chain, e.evm.tx)} />
+                  {e.kind === "decision" ? (
+                    agrees === null ? (
+                      <span style={{ color: "var(--text-faint)" }}>no chain record</span>
+                    ) : agrees ? (
+                      <span style={{ color: "var(--paid)" }}>matches Whitechain</span>
+                    ) : (
+                      <span style={{ color: "var(--rejected)" }}>DIFFERS from Whitechain</span>
+                    )
+                  ) : null}
+                </span>
+              </li>
+            );
+          })}
         </ol>
       )}
     </>
