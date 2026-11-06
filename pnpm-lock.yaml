@@ -41,6 +41,9 @@ importers:
       '@zowall/world':
         specifier: workspace:*
         version: link:../../packages/world
+      '@zowall/x402':
+        specifier: workspace:*
+        version: link:../../packages/x402
       lucide-react:
         specifier: 0.468.0
         version: 0.468.0(react@19.2.0)

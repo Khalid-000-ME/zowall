@@ -15,6 +15,7 @@ const config: NextConfig = {
     "@zowall/sdk",
     "@zowall/world",
     "@zowall/agent",
+    "@zowall/x402",
   ],
   typedRoutes: true,
   // Loaded from node_modules at runtime rather than bundled: the Hedera SDK is

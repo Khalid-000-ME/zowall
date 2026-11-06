@@ -26,7 +26,10 @@ const GROUPS: ReadonlyArray<{ label: string; items: readonly Item[] }> = [
   },
   {
     label: "Connect",
-    items: [{ href: "/app/agents", label: "Agents" }],
+    items: [
+      { href: "/app/agents", label: "Agents" },
+      { href: "/app/metered", label: "Metered spend" },
+    ],
   },
 ];
 
