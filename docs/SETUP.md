@@ -136,9 +136,11 @@ Create an app at https://developer.world.org.
 Leave `WORLD_ACTION=zowall-enroll`. The action is a string defined in code, not
 a portal value, and it is the one the enrollment registry expects.
 
-`WORLD_ENVIRONMENT` is `staging` by default. `staging` and `sandbox` are
-different environments with different verify endpoints, and sandbox
-additionally needs the Sandbox World ID app from TestFlight or Play.
+`WORLD_ENVIRONMENT` is `staging` by default. `staging` approves proofs in the
+web simulator. `sandbox` approves them in the World ID (Sandbox) app, which is
+installed from TestFlight or a Google Play test track (request access in the
+Developer Portal under World ID Sandbox). Both are verified through the same
+endpoint the server already calls.
 
 Check it:
 

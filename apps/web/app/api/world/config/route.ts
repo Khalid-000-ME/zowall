@@ -22,7 +22,9 @@ export async function GET(request: Request) {
   // The Portal calls it signing_key.private_key; both spellings show up in
   // people's .env files.
   const signingKeyHex = process.env.WORLD_RP_SIGNING_KEY ?? process.env.WORLD_RP_PRIVATE_KEY;
-  const environment = process.env.WORLD_ENVIRONMENT === "staging" ? "staging" : "production";
+  const requested = process.env.WORLD_ENVIRONMENT;
+  const environment =
+    requested === "staging" || requested === "sandbox" ? requested : "production";
 
   const missing = [
     !appId && "WORLD_APP_ID",

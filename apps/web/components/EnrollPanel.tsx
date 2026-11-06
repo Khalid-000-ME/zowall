@@ -182,9 +182,14 @@ export function EnrollPanel() {
               </button>
             </div>
 
-            {config.environment && config.environment !== "production" ? (
+            {config.environment === "sandbox" ? (
               <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>
-                This server is in <strong>{config.environment}</strong> mode. In the dialog, choose
+                This server is in <strong>sandbox</strong> mode. Approve with the World ID (Sandbox) app.
+                The production World App will not accept this request.
+              </p>
+            ) : config.environment === "staging" ? (
+              <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>
+                This server is in <strong>staging</strong> mode. In the dialog, choose
                 &ldquo;Use the simulator&rdquo; to approve with a test identity. The production World App
                 will not accept this request.
               </p>
