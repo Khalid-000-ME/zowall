@@ -2,7 +2,9 @@ import Link from "next/link";
 import { REASON_TEXT, formatUsdt } from "@zowall/gate-core";
 
 import { Empty } from "@/components/Empty";
+import { HoldActions } from "@/components/HoldActions";
 import { getOpenHolds, getPO } from "@/lib/chain";
+import { hashscanTopic } from "@/lib/chains";
 import { serverEnv } from "@/lib/env";
 import { nameOf } from "@/lib/humans";
 import { describe } from "@/lib/store";
@@ -83,6 +85,10 @@ export default async function HoldsPage() {
               <Link href={`/match/${hold.poId}`} style={{ fontSize: 14 }}>
                 Compare the three documents
               </Link>
+              <HoldActions
+                holdId={hold.id.toString()}
+                topicUrl={env.hederaTopicId ? hashscanTopic(env.hederaTopicId) : null}
+              />
             </li>
           ))}
         </ul>

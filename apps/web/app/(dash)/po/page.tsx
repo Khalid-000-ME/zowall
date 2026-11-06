@@ -35,7 +35,20 @@ export default async function PurchaseOrdersPage() {
         }}
       >
         <h1 style={{ fontSize: 30 }}>Purchase orders</h1>
-        <Link
+        <span style={{ display: "inline-flex", gap: 8 }}>
+          <Link
+            href="/po/new"
+            style={{
+              border: "1px solid var(--border-strong)",
+              padding: "8px 16px",
+              borderRadius: "var(--radius-sm)",
+              textDecoration: "none",
+              fontSize: 14,
+            }}
+          >
+            New order
+          </Link>
+          <Link
           href="/walkthrough"
           style={{
             background: "var(--accent)",
@@ -47,7 +60,8 @@ export default async function PurchaseOrdersPage() {
           }}
         >
           Walk through it
-        </Link>
+          </Link>
+        </span>
       </div>
 
       <VaultStrip />
