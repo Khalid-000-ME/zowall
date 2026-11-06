@@ -228,11 +228,6 @@ a {
 .land h2,
 .land h3,
 .hero-sub,
-.land-wordmark {
-  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
-  font-weight: 400;
-}
-
 /* ---------------------------------------------------------------- the art -- */
 
 .ascii-shape {
@@ -596,15 +591,25 @@ a {
 .land-footer {
   border-top: 1px solid var(--line);
   margin-top: var(--space-7);
-  padding-block: var(--space-6);
+  padding-top: var(--space-5);
+  overflow: hidden;
 }
 
+/* The name, set far larger than the page, lowercase, and faded out toward the
+   bottom edge so the page ends in it instead of on a rule. */
 .land-wordmark {
-  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
-  font-size: clamp(3rem, 14vw, 8rem);
-  line-height: 0.9;
-  color: var(--line);
-  margin: 0;
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(6rem, 31vw, 30rem);
+  line-height: 0.78;
+  letter-spacing: -0.045em;
+  text-align: center;
+  margin: var(--space-5) 0 0;
+  padding-bottom: 0.06em;
+  color: var(--ink);
+  user-select: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.55) 42%, transparent 92%);
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.55) 42%, transparent 92%);
 }
 
 .land-links {
