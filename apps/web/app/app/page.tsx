@@ -192,11 +192,7 @@ export default async function Overview() {
                 <span className="ui-numrow-n">{String(i + 1).padStart(2, "0")}</span>
                 <span className="ui-numrow-label">{nameOf(h.personId)}</span>
                 <span className="ui-numrow-note">
-                  {h.enrolled ? (
-                    <span className="ui-chip ui-chip--ok">World ID</span>
-                  ) : (
-                    <span className="ui-chip">stand-in</span>
-                  )}
+                  <span className="ui-chip ui-chip--ok">World ID</span>
                 </span>
                 <span className="ui-numrow-sub ui-mono">{shortHex(h.personId, 10, 6)}</span>
               </li>

@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { usdt, type Address } from "@zowall/gate-core";
 import { SAMPLE_ATTACKS, parseIntent, run } from "../src/index.ts";
 
-const ATTACKER = "0x000000000000000000000000000000000000dEaD" as Address;
+const ATTACKER = "0xbA3012c79C1F2aC25e4Bb2106aF140aE6A4C7269" as Address;
 const VENDOR = "0x1111111111111111111111111111111111111111" as Address;
 
 test("the agent falls for the changed-bank-details email, as designed", () => {
@@ -59,5 +59,5 @@ test("the agent reports what it tried, so the console can show it", async () => 
   };
   const result = await run(SAMPLE_ATTACKS[0]!.text, gate, { vendor: VENDOR });
   assert.match(result.narration, /I will send/);
-  assert.match(result.narration, /dEaD/i);
+  assert.match(result.narration, /bA3012c7/i);
 });

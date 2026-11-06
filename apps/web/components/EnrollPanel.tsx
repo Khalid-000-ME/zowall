@@ -179,7 +179,7 @@ export function EnrollPanel() {
         <h2 style={{ fontSize: 22, marginBottom: "var(--space-3)" }}>Verified so far</h2>
         {people.length === 0 ? (
           <p style={{ color: "var(--text-muted)", margin: 0 }}>
-            Nobody yet. The walkthrough uses labelled stand-ins until people verify here.
+            Nobody yet. Every role in the app is played by a person who has verified here.
           </p>
         ) : (
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "var(--space-2)" }}>

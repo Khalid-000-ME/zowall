@@ -48,7 +48,7 @@ import { getHold, getPO, getPOs, getVault, invalidateChainCache, publicClient, w
 import { txUrl } from "@/lib/chains";
 import { DemoError } from "@/lib/demo-http";
 import { serverEnv } from "@/lib/env";
-import { humanByKey, type Human } from "@/lib/humans";
+import { UNVERIFIED_KEY, humanByKey, type Human } from "@/lib/humans";
 import { invalidateJournal } from "@/lib/journal-read";
 import { rememberDescription } from "@/lib/store";
 
@@ -57,7 +57,8 @@ import { rememberDescription } from "@/lib/store";
 /** Holds no funds and signs nothing real; it exists to be the wrong party. */
 const ATTACKER_KEY = keccak256(toHex("zowall-demo-attacker"));
 export const ATTACKER_ACCOUNT = privateKeyToAccount(ATTACKER_KEY);
-export const DEAD = "0x000000000000000000000000000000000000dEaD" as Address;
+/** A real address nobody holds a key for: where an attacker would like to be paid. */
+export const ATTACKER_PAYEE = "0xbA3012c79C1F2aC25e4Bb2106aF140aE6A4C7269" as Address;
 
 function context() {
   const env = serverEnv();
@@ -355,17 +356,19 @@ async function attest(c: Ctx, human: Human, role: Role, poId: bigint, actionHash
  * on-chain to point at because nothing was sent. `strict` can only tighten the
  * deployment's setting, never loosen it.
  */
-function person(key: string | undefined, label: string, strict = false): Human {
-  const human = key ? humanByKey(key) : undefined;
-  if (!human) throw new DemoError(`Pick who ${label} is.`);
-
-  if ((strict || serverEnv().requireVerified) && !human.enrolled) {
+function person(key: string | undefined, label: string, _strict = false): Human {
+  // "Someone who has not verified" has no identity, so there is nothing for the
+  // attestor to sign. The refusal comes before any transaction exists.
+  if (key === UNVERIFIED_KEY) {
     throw new DemoError(
-      `Denied: ${human.name} has not verified with World ID, so the attestor issued no ` +
-        `attestation and nothing was sent.`,
+      "Denied: this person has not verified with World ID, so the attestor issued no " +
+        "attestation and nothing was sent.",
       403,
     );
   }
+
+  const human = key ? humanByKey(key) : undefined;
+  if (!human) throw new DemoError(`Pick who ${label} is. Only people verified with World ID can act.`);
   return human;
 }
 
@@ -518,7 +521,7 @@ export async function submitInvoiceFor(input: {
   const nonce = BigInt(input.nonce);
 
   const unit = input.kind === "overpriced" ? (po.unitPrice * 12n) / 10n : po.unitPrice;
-  const payee = input.kind === "swapped" || input.kind === "forged" ? DEAD : po.payee;
+  const payee = input.kind === "swapped" || input.kind === "forged" ? ATTACKER_PAYEE : po.payee;
 
   const invoice: Invoice = {
     poId,
@@ -692,7 +695,7 @@ export async function resetDemo(): Promise<{
 
   for (const po of await getPOs()) {
     if (po.status !== "Open") continue;
-    const creator: Human = { key: po.creatorPersonId, name: "creator", personId: po.creatorPersonId, enrolled: false };
+    const creator: Human = { key: po.creatorPersonId, name: "creator", personId: po.creatorPersonId, enrolled: true };
     const attestation = await attest(c, creator, "Creator", po.id, cancelActionHash(po.id));
     const out = await serial(async () => {
       const hash = await c.wallet.writeContract({

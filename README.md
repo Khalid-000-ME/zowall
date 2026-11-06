@@ -34,14 +34,15 @@ wraps an agent's x402 payments so a machine payment faces the same checks.
 | USDT (6 dp) | [`0xcedfB56113143d55b2358b8CFbB0dEB5Ad2f55a7`](https://explorer.testnet.whitechain.io/address/0xcedfB56113143d55b2358b8CFbB0dEB5Ad2f55a7) |
 
 A real USDT payment settled through the main flow, and three refusals, each a
-transaction anyone can open:
+transaction anyone can open. The order was raised and signed for by two World ID
+verified people:
 
 | Outcome | Transaction |
 |---|---|
-| **PAID** 2.00 USDT | [`0x56fb40d2…`](https://explorer.testnet.whitechain.io/tx/0x56fb40d209ed82e283dd6f5ed682a01c73a6afc55cf449a4e390bbb0d5a66250) |
-| `REJECTED NO_PO` | [`0xf6aca60a…`](https://explorer.testnet.whitechain.io/tx/0xf6aca60a677131171f5f2950c46ca5a8e846c74dac1b7fcadf90d71318d4be82) |
-| `REJECTED PAYEE_MISMATCH` | [`0xd856f3ac…`](https://explorer.testnet.whitechain.io/tx/0xd856f3acff1c5986c2c95dd70eff98d2d3c3d9aafb926b2570535aabfc1cdb74) |
-| `REJECTED DUPLICATE_INVOICE` | [`0x40159a05…`](https://explorer.testnet.whitechain.io/tx/0x40159a0500ba48aefa79df9f9174347d94a15784a593fd61011031dd0d3d02df) |
+| **PAID** 2.00 USDT | [`0xfb948aec…`](https://explorer.testnet.whitechain.io/tx/0xfb948aec6614e096e45bbc150f5c7d3c8691f574da667bb6865959452e85f3d6) |
+| `REJECTED NO_PO` | [`0x0900023c…`](https://explorer.testnet.whitechain.io/tx/0x0900023c897718109f957b716ea3bf98250cfa9eee7837b92474a7dfed783ffe) |
+| `REJECTED PAYEE_MISMATCH` | [`0x15d19c25…`](https://explorer.testnet.whitechain.io/tx/0x15d19c2582787404132518dd08dd085a4d985f95edcc8711db9c6c83a1889cd3) |
+| `REJECTED DUPLICATE_INVOICE` | [`0xb83d4182…`](https://explorer.testnet.whitechain.io/tx/0xb83d418281c4dd89706254fa7aa56c38b3fd62fc9bae0f396130e500de6633c1) |
 
 An x402 spend mandate is an order on the same gate, raised by one World ID
 verified person and signed for by another:
@@ -65,12 +66,13 @@ the chain's own logs and checks the ledger record around them:
 ```
 $ node packages/journal/src/cli.ts replay 0.0.11339027 --gate 0x8ec88c90d675594ab969ed1180f8b887dfac1c71
 
-  OK    ledger  4 messages, sequence 1..4 with no gaps, consensus times increasing, all paid by 0.0.8258062
+  OK    ledger  8 messages, sequence 1..8 with no gaps, consensus times increasing, all paid by 0.0.8258062
   OK    ledger  topic is closed (submit key set), immutable (no admin key) and its memo names this gate; renewal paid by 0.0.8258062
-  OK    #1  REJECTED po#0 NO_PO · digest recomputed and matched
-  OK    #2  REJECTED po#1 PAYEE_MISMATCH · digest recomputed and matched
-  OK    #3  PAID po#1 clean · digest recomputed and matched
-  OK    #4  REJECTED po#1 DUPLICATE_INVOICE · digest recomputed and matched
+  ...
+  OK    #5  REJECTED po#0 NO_PO · tx 0x0900023c… · digest recomputed and matched
+  OK    #6  REJECTED po#4 PAYEE_MISMATCH · tx 0x15d19c25… · digest recomputed and matched
+  OK    #7  PAID po#4 clean · tx 0xfb948aec… · digest recomputed and matched
+  OK    #8  REJECTED po#4 DUPLICATE_INVOICE · tx 0xb83d4182… · digest recomputed and matched
 
 OK - journal and chain agree
 ```
@@ -78,7 +80,7 @@ OK - journal and chain agree
 Verify any single decision from its log alone, with nothing supplied by us:
 
 ```bash
-node packages/e2e/src/verify-decision.ts 0x56fb40d209ed82e283dd6f5ed682a01c73a6afc55cf449a4e390bbb0d5a66250
+node packages/e2e/src/verify-decision.ts 0xfb948aec6614e096e45bbc150f5c7d3c8691f574da667bb6865959452e85f3d6
 ```
 
 Reproduce the four outcomes:
@@ -96,7 +98,7 @@ the ledger, the attestor quorum read from the gate, and the code behind each.
 
 | Sponsor | What is used | Where | Verify |
 |---|---|---|---|
-| <img src="apps/web/public/brands/whitechain.png" alt="Whitechain" height="20"> | A real USDT vault. Orders encumber a balance, a matched invoice pays from it in one transaction. | [`ZowallGate.sol`](packages/contracts/src/ZowallGate.sol), [`MatchEngine.sol`](packages/contracts/src/MatchEngine.sol) | [Gate on the explorer](https://explorer.testnet.whitechain.io/address/0x8ec88c90d675594ab969ed1180f8b887dfac1c71), [a PAID transaction](https://explorer.testnet.whitechain.io/tx/0x56fb40d209ed82e283dd6f5ed682a01c73a6afc55cf449a4e390bbb0d5a66250) |
+| <img src="apps/web/public/brands/whitechain.png" alt="Whitechain" height="20"> | A real USDT vault. Orders encumber a balance, a matched invoice pays from it in one transaction. | [`ZowallGate.sol`](packages/contracts/src/ZowallGate.sol), [`MatchEngine.sol`](packages/contracts/src/MatchEngine.sol) | [Gate on the explorer](https://explorer.testnet.whitechain.io/address/0x8ec88c90d675594ab969ed1180f8b887dfac1c71), [a PAID transaction](https://explorer.testnet.whitechain.io/tx/0xfb948aec6614e096e45bbc150f5c7d3c8691f574da667bb6865959452e85f3d6) |
 | <img src="apps/web/public/brands/hedera.svg" alt="Hedera" height="22"> | A hardened HCS topic as the audit journal, a replay that checks the ledger record, x402 v2 payments settled by a facilitator, and a threshold-key payer the middleware cannot be skipped around. | [`hcs.ts`](packages/journal/src/hcs.ts), [`replay.ts`](packages/journal/src/replay.ts), [`hedera.ts`](packages/x402/src/hedera.ts) | [Topic on HashScan](https://hashscan.io/testnet/topic/0.0.11339027), [payer account](https://hashscan.io/testnet/account/0.0.11338871), `journal replay` |
 | <img src="apps/web/public/brands/world.svg" alt="World" height="20"> | A uniqueness proof per person, validated on the server, compared on-chain. | [`verify/route.ts`](apps/web/app/api/world/verify/route.ts), [`verify.ts`](packages/world/src/verify.ts), [`ZowallGate.sol`](packages/contracts/src/ZowallGate.sol) | `/enroll`, `/app/proofs`, the `SodViolation` reverts |
 

@@ -13,6 +13,9 @@ import type { StepResult } from "@/lib/demo";
 
 type Human = { key: string; name: string; enrolled: boolean; personId: string };
 
+/** Mirrors UNVERIFIED_KEY in lib/humans.ts: "someone with no World ID", not a person. */
+const UNVERIFIED = "unverified";
+
 type Info = {
   enabled: boolean;
   switchedOff: boolean;
@@ -218,10 +221,9 @@ export function Walkthrough({ topicUrl, gate }: { topicUrl: string | null; gate:
   const [poId, setPoId] = useState<string | null>(null);
   const [holdId, setHoldId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [cast, setCast] = useState({ creator: "alice", receiver: "bob", approver: "cara" });
+  const [cast, setCast] = useState({ creator: "", receiver: "", approver: "" });
   const [text, setText] = useState(SAMPLE_ATTACKS[0]?.text ?? "");
   const [resetting, setResetting] = useState(false);
-  const [strict, setStrict] = useState(false);
   const [scenarioId, setScenarioId] = useState<keyof typeof SCENARIOS>("goods");
   const [raisedQty, setRaisedQty] = useState<number | null>(null);
 
@@ -244,26 +246,36 @@ export function Walkthrough({ topicUrl, gate }: { topicUrl: string | null; gate:
     void refresh();
   }, [refresh]);
 
+  // The three roles start as the first three verified people. There are no
+  // placeholder identities to fall back on, so with fewer than three the page asks
+  // for verification instead of running a flow it could not make real.
+  useEffect(() => {
+    const p = info?.humans ?? [];
+    setCast((c) =>
+      c.creator && c.receiver && c.approver
+        ? c
+        : { creator: p[0]?.key ?? "", receiver: p[1]?.key ?? "", approver: p[2]?.key ?? "" },
+    );
+  }, [info]);
+
   const names = useMemo(() => {
     const out: Record<string, string> = {};
     for (const h of info?.humans ?? []) {
-      out[h.personId.toLowerCase()] = `${h.name} (${h.enrolled ? "World ID" : "stand-in"})`;
+      out[h.personId.toLowerCase()] = `${h.name} (World ID)`;
     }
     return out;
   }, [info]);
 
   const nameOf = (key: string) => info?.humans.find((h) => h.key === key)?.name ?? key;
 
-  // The deployment can require verification outright. The switch below can only make
-  // it stricter, never looser, and the server applies the same rule either way.
-  const enforce = strict || Boolean(info?.requireVerified);
+  // Everyone listed has verified with World ID, so verification is always enforced.
+  const enforce = true;
 
   // Quantities follow the order that exists, not the scenario selected, so a refreshed
   // page or a changed selection cannot send a step the wrong amount.
   const scenario = SCENARIOS[scenarioId];
   const poQty = raisedQty ?? (info?.current ? Number(info.current.qty) : scenario.qty);
   const half = Math.max(1, Math.floor(poQty / 2));
-  const unverified = info?.humans.find((h) => !h.enrolled);
 
   async function run(id: StepId, job: () => Promise<Partial<Run> & { result?: StepResult }>) {
     setBusy(true);
@@ -452,25 +464,21 @@ export function Walkthrough({ topicUrl, gate }: { topicUrl: string | null; gate:
             }
           />
         ))}
-        {unverified ? (
-          <Btn
-            label={`${unverified.name} tries (has not verified)`}
-            tone="quiet"
-            disabled={busy || !holdId}
-            onClick={() =>
-              run("deny", async () => {
-                const { result } = await post<{ result: StepResult }>("/api/demo/hold", {
-                  holdId,
-                  approve: true,
-                  approver: unverified.key,
-                  // Forces the check on for this attempt whatever the switch says.
-                  requireVerified: true,
-                });
-                return { result };
-              })
-            }
-          />
-        ) : null}
+        <Btn
+          label="Someone who has not verified tries"
+          tone="quiet"
+          disabled={busy || !holdId}
+          onClick={() =>
+            run("deny", async () => {
+              const { result } = await post<{ result: StepResult }>("/api/demo/hold", {
+                holdId,
+                approve: true,
+                approver: UNVERIFIED,
+              });
+              return { result };
+            })
+          }
+        />
       </div>
     ),
     approve: (
@@ -626,6 +634,27 @@ export function Walkthrough({ topicUrl, gate }: { topicUrl: string | null; gate:
           <div style={{ fontSize: 12, color: "var(--text-faint)", letterSpacing: "0.06em", marginBottom: 8 }}>
             THE THREE PEOPLE
           </div>
+          {people.length < 3 ? (
+            <p
+              style={{
+                margin: "0 0 var(--space-3)",
+                padding: "10px 12px",
+                borderRadius: "var(--radius-sm)",
+                background: "var(--held-bg)",
+                color: "var(--held)",
+                fontSize: 13.5,
+              }}
+            >
+              {people.length === 0
+                ? "Nobody has verified yet."
+                : `${people.length} of 3 people have verified.`}{" "}
+              The control separates three different humans, so the flow needs three.{" "}
+              <Link href="/enroll" style={{ color: "inherit" }}>
+                Verify with World ID
+              </Link>
+              .
+            </p>
+          ) : null}
           <div style={{ display: "flex", gap: "var(--space-4)", flexWrap: "wrap" }}>
             {(
               [
@@ -651,7 +680,6 @@ export function Walkthrough({ topicUrl, gate }: { topicUrl: string | null; gate:
                   {people.map((h) => (
                     <option key={h.key} value={h.key}>
                       {h.name}
-                      {h.enrolled ? " (World ID)" : " (stand-in)"}
                     </option>
                   ))}
                 </select>
@@ -669,32 +697,21 @@ export function Walkthrough({ topicUrl, gate }: { topicUrl: string | null; gate:
                     style={{
                       padding: "3px 10px",
                       borderRadius: "var(--radius-sm)",
-                      background: who.enrolled ? "var(--paid-bg)" : "var(--held-bg)",
-                      color: who.enrolled ? "var(--paid)" : "var(--held)",
+                      background: "var(--paid-bg)",
+                      color: "var(--paid)",
                     }}
                   >
-                    {role}: {who.name}, {who.enrolled ? "verified with World ID" : "stand-in"}
+                    {role}: {who.name}, verified with World ID
                   </span>
                 );
               })}
             </div>
 
-            <label style={{ display: "flex", gap: 8, alignItems: "center", color: "var(--text-muted)" }}>
-              <input
-                type="checkbox"
-                checked={enforce}
-                disabled={Boolean(info?.requireVerified)}
-                onChange={(e) => setStrict(e.target.checked)}
-              />
-              Only people verified with World ID may act
-              {info?.requireVerified ? " (required by this deployment)" : ""}
-            </label>
-
             <p style={{ margin: 0, color: "var(--text-muted)", lineHeight: 1.55 }}>
-              Each person is a stable identifier: the World ID nullifier from one enrolment. Stand-ins
-              exist so the flow can be rehearsed;{" "}
-              <Link href="/enroll">verify real people</Link> and they appear in these lists. Try the
-              same person in two roles and see what the contract says.
+              Each person is a stable identifier: the World ID nullifier from one enrolment. Only
+              verified people appear here.{" "}
+              <Link href="/enroll">Verify another person</Link> to add one. Try the same person in
+              two roles and see what the contract says.
             </p>
           </div>
         </div>

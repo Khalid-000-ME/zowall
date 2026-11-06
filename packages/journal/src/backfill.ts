@@ -11,6 +11,7 @@
 import { codesOf } from "@zowall/gate-core";
 
 import { evmSourceFromChain } from "./evm.ts";
+import { decodeTopic, readTopic } from "./mirror.ts";
 import { JournalWriter } from "./hcs.ts";
 import type { DecisionEntry } from "./entry.ts";
 
@@ -34,9 +35,18 @@ const writer = new JournalWriter({
   network: "testnet",
 });
 
-process.stdout.write(`${decisions.length} decisions on ${gateAddress}\n\n`);
+// Idempotent: a decision already on the topic is not written again. The topic is
+// permanent, so a duplicate entry could never be taken back.
+const journaled = new Set(
+  decodeTopic(await readTopic(env("HEDERA_TOPIC_ID"), { order: "asc" })).records
+    .map((r) => r.entry.evm?.tx?.toLowerCase())
+    .filter((t): t is string => typeof t === "string"),
+);
+
+process.stdout.write(`${decisions.length} decisions on ${gateAddress}, ${journaled.size} already journaled\n\n`);
 
 for (const d of decisions) {
+  if (journaled.has(d.txHash.toLowerCase())) continue;
   const entry: DecisionEntry = {
     v: 1,
     kind: "decision",

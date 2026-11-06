@@ -404,7 +404,7 @@ export default async function Proofs() {
                       p.world.threeParty.allEnrolled ? "ui-chip ui-chip--ok" : "ui-chip ui-chip--held"
                     }
                   >
-                    {p.world.threeParty.allEnrolled ? "yes" : "no: includes a stand-in"}
+                    {p.world.threeParty.allEnrolled ? "yes" : "no: an id the registry does not know"}
                   </span>
                 </div>
               </>

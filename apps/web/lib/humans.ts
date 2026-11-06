@@ -6,9 +6,10 @@
  * World ID nullifier from the single `zowall-enroll` action, which is stable
  * per person and therefore comparable across roles.
  *
- * Stand-ins are fixed personIds for rehearsing the flow before anyone has
- * enrolled, and they are labelled as such wherever they appear. A person who
- * enrolls through World ID is listed alongside them.
+ * Only people who have verified with World ID exist here. There are no
+ * placeholder identities: an id the app invented would be an id World never
+ * vouched for, and showing it next to real ones is how a demo ends up claiming
+ * more than it proved.
  */
 
 import type { Bytes32 } from "@zowall/gate-core";
@@ -19,26 +20,24 @@ export type Human = {
   key: string;
   name: string;
   personId: Bytes32;
-  /** true when this person came from a verified World ID proof */
-  enrolled: boolean;
+  /** always true: nobody is listed unless a World ID proof was verified for them */
+  enrolled: true;
 };
 
-const pid = (hex: string): Bytes32 => `0x${hex.repeat(32)}` as Bytes32;
-
-export const STAND_INS: readonly Human[] = [
-  { key: "alice", name: "Alice", personId: pid("a1"), enrolled: false },
-  { key: "bob", name: "Bob", personId: pid("b2"), enrolled: false },
-  { key: "cara", name: "Cara", personId: pid("c3"), enrolled: false },
-];
+/**
+ * Not a person. It stands for "someone who has not verified with World ID", so
+ * the denied path can be shown without inventing an identity: there is nothing to
+ * attest, so the attestor refuses before a transaction exists.
+ */
+export const UNVERIFIED_KEY = "unverified";
 
 export function humans(): Human[] {
-  const live: Human[] = enrollments().all().map((e) => ({
+  return enrollments().all().map((e) => ({
     key: e.personId,
     name: e.label,
     personId: e.personId,
-    enrolled: true,
+    enrolled: true as const,
   }));
-  return [...STAND_INS, ...live];
 }
 
 export function humanByKey(key: string): Human | undefined {

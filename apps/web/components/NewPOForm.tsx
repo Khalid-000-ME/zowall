@@ -91,7 +91,7 @@ export function NewPOForm() {
           {people.map((p) => (
             <option key={p.key} value={p.key}>
               {p.name}
-              {p.enrolled ? " (World ID)" : " (stand-in)"}
+              {" (World ID)"}
             </option>
           ))}
         </select>
