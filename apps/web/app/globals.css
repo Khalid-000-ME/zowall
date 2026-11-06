@@ -150,3 +150,44 @@ a {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* "Built with" row. One behaviour for every mark: quiet at rest, full colour on
+   hover. Sizes are tuned so the marks weigh the same, not so their boxes match. */
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+  margin-top: var(--space-7);
+}
+
+.brand-row .brand-label {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.brand-row a {
+  display: inline-flex;
+  opacity: 0.55;
+  filter: grayscale(1);
+  transition: opacity 180ms ease, filter 180ms ease;
+}
+
+.brand-row a:hover,
+.brand-row a:focus-visible {
+  opacity: 1;
+  filter: none;
+}
+
+.brand-row img {
+  display: block;
+  width: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-row a {
+    transition: none;
+  }
+}

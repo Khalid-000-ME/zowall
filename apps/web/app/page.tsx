@@ -10,6 +10,30 @@ import { SiteNav } from "@/components/SiteNav";
 const TAGLINE = "No PO, no pay.";
 const TAGLINE_TECH = "USDT on Whitechain, refusals on Hedera HCS.";
 
+const BRANDS = [
+  {
+    name: "Whitechain",
+    href: "https://whitechain.io",
+    light: "/brands/whitechain.png",
+    dark: "/brands/whitechain-dark.png",
+    height: 22,
+  },
+  {
+    name: "Hedera",
+    href: "https://hedera.com",
+    light: "/brands/hedera.svg",
+    dark: "/brands/hedera-white.svg",
+    height: 26,
+  },
+  {
+    name: "World",
+    href: "https://world.org",
+    light: "/brands/world.svg",
+    dark: "/brands/world-white.svg",
+    height: 24,
+  },
+] as const;
+
 export default function Home() {
   const hard = REASON_CODES.filter((c) => SEVERITY[c] === "hard");
   const soft = REASON_CODES.filter((c) => SEVERITY[c] === "soft");
@@ -74,7 +98,7 @@ export default function Home() {
           }}
         >
           <Link
-            href="/attack"
+            href="/walkthrough"
             style={{
               background: "var(--accent)",
               color: "var(--accent-text)",
@@ -84,10 +108,10 @@ export default function Home() {
               fontSize: 16,
             }}
           >
-            Try to break it
+            Walk through it
           </Link>
           <Link
-            href="/po"
+            href="/attack"
             style={{
               border: "1px solid var(--border-strong)",
               padding: "12px 22px",
@@ -96,15 +120,22 @@ export default function Home() {
               fontSize: 16,
             }}
           >
-            See the dashboard
+            Try to break it
           </Link>
         </div>
 
-        {/*
-          Sponsor marks go here: a quiet "Built with" row of the real
-          Whitechain, Hedera and World logos, from their own brand kits, in
-          public/brands/. Not added yet - a redrawn mark is worse than none.
-        */}
+        <div className="brand-row" aria-label="Built with">
+          <span className="brand-label">Built with</span>
+          {BRANDS.map((b) => (
+            <a key={b.name} href={b.href} target="_blank" rel="noreferrer" aria-label={b.name}>
+              <picture>
+                <source media="(prefers-color-scheme: dark)" srcSet={b.dark} />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={b.light} alt={b.name} style={{ height: b.height }} />
+              </picture>
+            </a>
+          ))}
+        </div>
       </section>
 
       <section
