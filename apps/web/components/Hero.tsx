@@ -27,11 +27,12 @@ export function Hero({ tagline, taglineTech }: { tagline: string; taglineTech: s
     <section className="hero">
       <div className="hero-art" aria-hidden="true">
         <GradientASCII
-          colors={["#14110d", "#6b4a12", "#c9922f", "#f3e6c9"]}
+          colors={["#3a2a12", "#9a6a16", "#d9a94a", "#f6ead0"]}
           shape="rise"
           characters=" =+xX0S8#@"
           cellSize={18}
           density={0.8}
+          glow={0.35}
         />
         <div className="hero-dim" />
       </div>

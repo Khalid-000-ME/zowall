@@ -215,15 +215,17 @@ a {
   z-index: -1;
 }
 
-/* Keeps the words readable without flattening the art at the edges. */
+/* Keeps the words readable without flattening the art.
+   Weighted to the left, where the copy sits, so the right half of the band
+   shows the glyphs at close to full strength. */
 .hero-dim {
   position: absolute;
   inset: 0;
   background: radial-gradient(
-    ellipse 70% 60% at 30% 50%,
-    rgba(11, 10, 9, 0.88) 0%,
-    rgba(11, 10, 9, 0.6) 50%,
-    rgba(11, 10, 9, 0.25) 100%
+    ellipse 60% 70% at 22% 50%,
+    rgba(11, 10, 9, 0.9) 0%,
+    rgba(11, 10, 9, 0.62) 42%,
+    rgba(11, 10, 9, 0.12) 100%
   );
 }
 
