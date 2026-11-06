@@ -8,7 +8,15 @@
  * read comes back as `null` and the page says it could not confirm that item.
  */
 
-import { getDecisions, getPOs, publicClient, type ChainDecision, type ChainPO } from "@/lib/chain";
+import {
+  getDecisions,
+  getPOs,
+  getResolutions,
+  publicClient,
+  type ChainDecision,
+  type ChainPO,
+  type ChainResolution,
+} from "@/lib/chain";
 import { GATE_ABI } from "@zowall/sdk";
 import { accountKeyTree, describe } from "@/lib/hedera-key";
 import { serverEnv } from "@/lib/env";
@@ -59,9 +67,12 @@ export type WorldProof = {
   action: string;
   appId: string | null;
   enrolled: Human[];
-  /** most recent decision whose creator, receiver and approver are all different, filled people */
+  /**
+   * The most recent held invoice that a person decided, where the order's
+   * creator, its receiver and the approver are three different people.
+   */
   threeParty: {
-    decision: ChainDecision;
+    resolution: ChainResolution;
     names: { creator: string; receiver: string; approver: string };
     allEnrolled: boolean;
   } | null;
@@ -69,28 +80,31 @@ export type WorldProof = {
 
 const ZERO = /^0x0+$/;
 
-export async function worldProof(decisions: ChainDecision[]): Promise<WorldProof> {
-  const enrolled = humans().filter((h) => h.enrolled);
+export async function worldProof(resolutions: ChainResolution[], pos: ChainPO[]): Promise<WorldProof> {
+  const enrolled = humans();
   const enrolledIds = new Set(enrolled.map((h) => h.personId.toLowerCase()));
+  const poById = new Map(pos.map((p) => [p.id, p]));
 
-  // A decision only proves separation of duties if an approver is present and
-  // all three ids differ. Decisions with no approver (a clean match) prove
-  // creator and receiver only, and are not what this slot is for.
-  const candidates = [...decisions].reverse().filter((d) => {
-    const a = d.creatorPersonId.toLowerCase();
-    const b = d.receiverPersonId.toLowerCase();
-    const c = d.approverPersonId.toLowerCase();
-    return !ZERO.test(c) && !ZERO.test(a) && !ZERO.test(b) && a !== b && b !== c && a !== c;
+  // A resolution only proves separation of duties if the order's creator and
+  // receiver are both recorded and all three ids differ.
+  const candidates = [...resolutions].reverse().flatMap((r) => {
+    const po = poById.get(r.poId);
+    if (!po) return [];
+    const a = po.creatorPersonId.toLowerCase();
+    const b = po.receiverPersonId.toLowerCase();
+    const c = r.approverPersonId.toLowerCase();
+    if (ZERO.test(a) || ZERO.test(b) || ZERO.test(c)) return [];
+    if (a === b || b === c || a === c) return [];
+    return [{ r, po }];
   });
 
-  // Prefer one where all three are World ID enrolled people, since that is the
-  // claim being made; fall back to any three-distinct decision and say so.
+  // Prefer one where all three are enrolled, since that is the claim being made.
   const best =
     candidates.find(
-      (d) =>
-        enrolledIds.has(d.creatorPersonId.toLowerCase()) &&
-        enrolledIds.has(d.receiverPersonId.toLowerCase()) &&
-        enrolledIds.has(d.approverPersonId.toLowerCase()),
+      ({ r, po }) =>
+        enrolledIds.has(po.creatorPersonId.toLowerCase()) &&
+        enrolledIds.has(po.receiverPersonId.toLowerCase()) &&
+        enrolledIds.has(r.approverPersonId.toLowerCase()),
     ) ?? candidates[0];
 
   return {
@@ -100,16 +114,16 @@ export async function worldProof(decisions: ChainDecision[]): Promise<WorldProof
     enrolled,
     threeParty: best
       ? {
-          decision: best,
+          resolution: best.r,
           names: {
-            creator: nameOf(best.creatorPersonId),
-            receiver: nameOf(best.receiverPersonId),
-            approver: nameOf(best.approverPersonId),
+            creator: nameOf(best.po.creatorPersonId),
+            receiver: nameOf(best.po.receiverPersonId),
+            approver: nameOf(best.r.approverPersonId),
           },
           allEnrolled:
-            enrolledIds.has(best.creatorPersonId.toLowerCase()) &&
-            enrolledIds.has(best.receiverPersonId.toLowerCase()) &&
-            enrolledIds.has(best.approverPersonId.toLowerCase()),
+            enrolledIds.has(best.po.creatorPersonId.toLowerCase()) &&
+            enrolledIds.has(best.po.receiverPersonId.toLowerCase()) &&
+            enrolledIds.has(best.r.approverPersonId.toLowerCase()),
         }
       : null,
   };
@@ -165,6 +179,12 @@ export async function loadProofs(origin: string): Promise<Proofs> {
 
   let decisions: ChainDecision[] = [];
   let pos: ChainPO[] = [];
+  let resolutions: ChainResolution[] = [];
+  try {
+    resolutions = await getResolutions();
+  } catch {
+    reachable = false;
+  }
   try {
     decisions = await getDecisions();
   } catch {
@@ -195,7 +215,7 @@ export async function loadProofs(origin: string): Promise<Proofs> {
     topic,
     journalEntries: journal.error ? null : journal.records.length,
     mandate,
-    world: await worldProof(decisions),
+    world: await worldProof(resolutions, pos),
     quorum,
     guardian,
   };

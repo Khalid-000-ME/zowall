@@ -187,8 +187,10 @@ them on restart. In staging the widget offers **Use the simulator** for test ide
 WORLD_REQUIRE_VERIFIED=true   # the attestor signs only for verified people
 ```
 
-Off by default, so the flow can be rehearsed with stand-ins. The walkthrough has a switch
-that can tighten it per run but never loosen it.
+The app has no placeholder identities: only people who verified with World ID are
+listed, so every role is played by a verified person and this setting changes
+nothing visible. "Someone who has not verified" is shown as a denial, not as a
+person.
 
 Segregation of duties needs **three different enrolled people** for creator,
 receiver and approver. In non-production environments the identities behind

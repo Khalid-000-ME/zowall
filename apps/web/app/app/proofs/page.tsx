@@ -365,8 +365,8 @@ export default async function Proofs() {
           <div>
             <h3 className="ui-tile-title">Separation of duties, on-chain</h3>
             <p className="ui-lede">
-              A decision records the creator, the receiver and the approver. The most recent one
-              where all three are present and different is below. If the contract had been given
+              An order records its creator and its receiver, and the approval records the third
+              person. The most recent held invoice where all three are different is below. If the contract had been given
               the same person twice it would have reverted.
             </p>
           </div>
@@ -375,15 +375,15 @@ export default async function Proofs() {
             {p.world.threeParty ? (
               <>
                 <div className="ui-row">
-                  <span className="ui-muted">Decision</span>
+                  <span className="ui-muted">Approval</span>
                   <ProofHash
-                    value={p.world.threeParty.decision.txHash}
-                    href={txUrl(p.chainId, p.world.threeParty.decision.txHash)}
+                    value={p.world.threeParty.resolution.txHash}
+                    href={txUrl(p.chainId, p.world.threeParty.resolution.txHash)}
                   />
                 </div>
                 <div className="ui-row">
                   <span className="ui-muted">Order</span>
-                  <span className="ui-mono">#{p.world.threeParty.decision.poId.toString()}</span>
+                  <span className="ui-mono">#{p.world.threeParty.resolution.poId.toString()}</span>
                 </div>
                 <div className="ui-row">
                   <span className="ui-muted">Raised by</span>

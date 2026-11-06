@@ -9,6 +9,7 @@
  */
 
 import {
+  getAbiItem,
   createPublicClient,
   decodeFunctionData,
   defineChain,
@@ -242,6 +243,55 @@ export async function getDecisions(): Promise<ChainDecision[]> {
         timestamp: await timestampOf(BigInt(d.blockNumber)),
       })),
     );
+  });
+}
+
+export type ChainResolution = {
+  holdId: bigint;
+  poId: bigint;
+  approved: boolean;
+  approverPersonId: Bytes32;
+  paid: bigint;
+  amended: bigint;
+  txHash: string;
+  blockNumber: number;
+};
+
+/**
+ * Every held invoice a person has decided, from the gate's `HoldResolved` logs.
+ *
+ * This is where a third person's id is recorded, so it is what proves that three
+ * different people touched a payment. `eth_getLogs` is capped at 10,000 blocks on
+ * Whitechain, so the range is walked in chunks.
+ */
+export async function getResolutions(): Promise<ChainResolution[]> {
+  const env = serverEnv();
+  const gate = requireGate();
+
+  return cached("resolutions", async () => {
+    const client = publicClient();
+    const latest = await client.getBlockNumber();
+    let from = env.gateDeployBlock ?? 0n;
+    const event = getAbiItem({ abi: GATE_ABI, name: "HoldResolved" });
+    const out: ChainResolution[] = [];
+
+    while (from <= latest) {
+      const to = from + 8_999n < latest ? from + 8_999n : latest;
+      const logs = await client.getLogs({ address: gate, event, fromBlock: from, toBlock: to });
+      for (const l of logs) {
+        const a = l.args as {
+          holdId: bigint;
+          poId: bigint;
+          approved: boolean;
+          approverPersonId: Bytes32;
+          paid: bigint;
+          amended: bigint;
+        };
+        out.push({ ...a, txHash: l.transactionHash, blockNumber: Number(l.blockNumber) });
+      }
+      from = to + 1n;
+    }
+    return out;
   });
 }
 
