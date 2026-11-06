@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { REASON_CODES, REASON_TEXT, SEVERITY } from "@zowall/gate-core";
 
+import { Hero } from "@/components/Hero";
 import { SiteNav } from "@/components/SiteNav";
 
 /**
@@ -10,29 +11,6 @@ import { SiteNav } from "@/components/SiteNav";
 const TAGLINE = "No PO, no pay.";
 const TAGLINE_TECH = "USDT on Whitechain, refusals on Hedera HCS.";
 
-const BRANDS = [
-  {
-    name: "Whitechain",
-    href: "https://whitechain.io",
-    light: "/brands/whitechain.png",
-    dark: "/brands/whitechain-dark.png",
-    height: 22,
-  },
-  {
-    name: "Hedera",
-    href: "https://hedera.com",
-    light: "/brands/hedera.svg",
-    dark: "/brands/hedera-white.svg",
-    height: 26,
-  },
-  {
-    name: "World",
-    href: "https://world.org",
-    light: "/brands/world.svg",
-    dark: "/brands/world-white.svg",
-    height: 24,
-  },
-] as const;
 
 export default function Home() {
   const hard = REASON_CODES.filter((c) => SEVERITY[c] === "hard");
@@ -40,103 +18,9 @@ export default function Home() {
 
   return (
     <>
-      <SiteNav />
+      <SiteNav overDark />
 
-      <section
-        style={{
-          minHeight: "92dvh",
-          display: "grid",
-          alignContent: "center",
-          paddingBlock: "var(--space-8)",
-        }}
-        className="page"
-      >
-        <p style={{ color: "var(--text-muted)", margin: 0, fontSize: 15 }}>
-          Three-way invoice match for agents that hold a wallet
-        </p>
-
-        <h1
-          style={{
-            fontSize: "clamp(2.6rem, 8vw, 5rem)",
-            lineHeight: 1.05,
-            margin: "var(--space-4) 0 var(--space-3)",
-            maxWidth: "22ch",
-          }}
-        >
-          {TAGLINE}
-        </h1>
-
-        <p
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: "clamp(1.1rem, 2.6vw, 1.6rem)",
-            color: "var(--text-muted)",
-            margin: "0 0 var(--space-4)",
-          }}
-        >
-          {TAGLINE_TECH}
-        </p>
-
-        <p
-          style={{
-            color: "var(--text-muted)",
-            maxWidth: "var(--measure)",
-            fontSize: 17,
-            marginTop: 0,
-          }}
-        >
-          Finance never pays an invoice that does not match the purchase order and the goods
-          receipt. Your agents pay everything. This is the missing check, as a contract.
-        </p>
-
-        <div
-          style={{
-            display: "flex",
-            gap: "var(--space-3)",
-            marginTop: "var(--space-5)",
-            flexWrap: "wrap",
-          }}
-        >
-          <Link
-            href="/walkthrough"
-            style={{
-              background: "var(--accent)",
-              color: "var(--accent-text)",
-              padding: "12px 22px",
-              borderRadius: "var(--radius-sm)",
-              textDecoration: "none",
-              fontSize: 16,
-            }}
-          >
-            Walk through it
-          </Link>
-          <Link
-            href="/attack"
-            style={{
-              border: "1px solid var(--border-strong)",
-              padding: "12px 22px",
-              borderRadius: "var(--radius-sm)",
-              textDecoration: "none",
-              fontSize: 16,
-            }}
-          >
-            Try to break it
-          </Link>
-        </div>
-
-        <div className="brand-row" aria-label="Built with">
-          <span className="brand-label">Built with</span>
-          {BRANDS.map((b) => (
-            <a key={b.name} href={b.href} target="_blank" rel="noreferrer" aria-label={b.name}>
-              <picture>
-                <source media="(prefers-color-scheme: dark)" srcSet={b.dark} />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={b.light} alt={b.name} style={{ height: b.height }} />
-              </picture>
-            </a>
-          ))}
-        </div>
-      </section>
+      <Hero tagline={TAGLINE} taglineTech={TAGLINE_TECH} />
 
       <section
         className="page"

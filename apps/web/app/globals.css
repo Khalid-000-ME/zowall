@@ -191,3 +191,130 @@ a {
     transition: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Landing hero
+   The one dark surface in the product. Its colours are literals rather than
+   tokens on purpose: the band stays dark in both themes, so a token that flips
+   with the colour scheme would make the art unreadable in light mode.
+   --------------------------------------------------------------------------- */
+.hero {
+  position: relative;
+  min-height: 94dvh;
+  display: grid;
+  align-content: center;
+  overflow: hidden;
+  background: #0b0a09;
+  color: #f4f1ea;
+  isolation: isolate;
+}
+
+.hero-art {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+
+/* Keeps the words readable without flattening the art at the edges. */
+.hero-dim {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 70% 60% at 30% 50%,
+    rgba(11, 10, 9, 0.88) 0%,
+    rgba(11, 10, 9, 0.6) 50%,
+    rgba(11, 10, 9, 0.25) 100%
+  );
+}
+
+.hero-body {
+  position: relative;
+  padding-block: var(--space-8);
+}
+
+.hero-eyebrow {
+  margin: 0;
+  font-size: 15px;
+  color: rgba(244, 241, 234, 0.6);
+}
+
+.hero-title {
+  font-size: clamp(2.6rem, 8vw, 5rem);
+  line-height: 1.05;
+  margin: var(--space-4) 0 var(--space-3);
+  max-width: 22ch;
+  color: #f4f1ea;
+}
+
+.hero-sub {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(1.1rem, 2.6vw, 1.6rem);
+  color: rgba(244, 241, 234, 0.72);
+  margin: 0 0 var(--space-4);
+}
+
+.hero-lede {
+  color: rgba(244, 241, 234, 0.64);
+  max-width: var(--measure);
+  font-size: 17px;
+  margin-top: 0;
+}
+
+.hero-actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.hero-btn {
+  padding: 12px 22px;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  font-size: 16px;
+  transition: background 160ms ease-out, border-color 160ms ease-out;
+}
+
+.hero-btn-primary {
+  background: #f4f1ea;
+  color: #0b0a09;
+}
+
+.hero-btn-primary:hover {
+  background: #ffffff;
+}
+
+.hero-btn-ghost {
+  border: 1px solid rgba(244, 241, 234, 0.3);
+  color: #f4f1ea;
+}
+
+.hero-btn-ghost:hover {
+  border-color: rgba(244, 241, 234, 0.6);
+}
+
+.hero-brands {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+  margin-top: var(--space-8);
+}
+
+.hero-brand-label {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(244, 241, 234, 0.4);
+}
+
+.hero-brands img {
+  display: block;
+  opacity: 0.75;
+  transition: opacity 160ms ease-out;
+}
+
+.hero-brands a:hover img,
+.hero-brands a:focus-visible img {
+  opacity: 1;
+}

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { Wordmark } from "@/components/Logo";
 
 const LINKS = [
-  { href: "/po", label: "Dashboard" },
+  { href: "/app", label: "App" },
   { href: "/attack", label: "Attack console" },
   { href: "/journal", label: "Journal" },
 ] as const;
@@ -15,8 +15,12 @@ const LINKS = [
  * No bar over the hero - the hero owns the top of the screen. After scrolling
  * past it, a bar fades in, detached from the top edge and inset from the
  * sides, so it reads as its own floating element.
+ *
+ * `overDark` is for pages whose hero is the dark ASCII band: the links have to
+ * invert while the bar is invisible, or they are ink on ink. Once the bar
+ * appears it is on the page background again and the normal colours apply.
  */
-export function SiteNav() {
+export function SiteNav({ overDark = false }: { overDark?: boolean }) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -36,6 +40,7 @@ export function SiteNav() {
         justifyContent: "center",
         paddingTop: scrolled ? 12 : 24,
         transition: "padding 300ms ease-out",
+        color: overDark && !scrolled ? "#f4f1ea" : "var(--text)",
       }}
     >
       <nav
