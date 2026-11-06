@@ -227,7 +227,11 @@ a {
 .land h1,
 .land h2,
 .land h3,
-.hero-sub,
+.hero-sub {
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 400;
+}
+
 /* ---------------------------------------------------------------- the art -- */
 
 .ascii-shape {
