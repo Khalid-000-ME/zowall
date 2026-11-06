@@ -18,7 +18,9 @@
     "typecheck": "pnpm -r typecheck",
     "journal": "pnpm --filter @zowall/journal start",
     "postinstall": "node scripts/link-env.mjs",
-    "link-env": "node scripts/link-env.mjs"
+    "link-env": "node scripts/link-env.mjs",
+    "gen:abi": "node scripts/gen-abi.mjs",
+    "check:abi": "node scripts/gen-abi.mjs --check"
   },
   "devDependencies": {
     "@types/node": "24.9.2",

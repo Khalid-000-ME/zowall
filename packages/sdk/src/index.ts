@@ -33,70 +33,10 @@ export const INVOICE_TYPES = {
   ],
 } as const;
 
-export const GATE_ABI = [
-  {
-    type: "function",
-    name: "submitInvoice",
-    stateMutability: "nonpayable",
-    inputs: [
-      {
-        name: "inv",
-        type: "tuple",
-        components: [
-          { name: "poId", type: "uint256" },
-          { name: "vendor", type: "address" },
-          { name: "payee", type: "address" },
-          { name: "qty", type: "uint128" },
-          { name: "unitPrice", type: "uint128" },
-          { name: "invoiceHash", type: "bytes32" },
-          { name: "nonce", type: "uint256" },
-          { name: "deadline", type: "uint64" },
-        ],
-      },
-      { name: "vendorSig", type: "bytes" },
-    ],
-    outputs: [{ name: "", type: "uint8" }],
-  },
-  {
-    type: "function",
-    name: "previewInvoice",
-    stateMutability: "view",
-    inputs: [
-      {
-        name: "inv",
-        type: "tuple",
-        components: [
-          { name: "poId", type: "uint256" },
-          { name: "vendor", type: "address" },
-          { name: "payee", type: "address" },
-          { name: "qty", type: "uint128" },
-          { name: "unitPrice", type: "uint128" },
-          { name: "invoiceHash", type: "bytes32" },
-          { name: "nonce", type: "uint256" },
-          { name: "deadline", type: "uint64" },
-        ],
-      },
-      { name: "vendorSig", type: "bytes" },
-    ],
-    outputs: [
-      { name: "reasonMask", type: "uint32" },
-      { name: "outcome", type: "uint8" },
-    ],
-  },
-  {
-    type: "event",
-    name: "Decision",
-    inputs: [
-      { name: "poId", type: "uint256", indexed: true },
-      { name: "invoiceHash", type: "bytes32", indexed: false },
-      { name: "outcome", type: "uint8", indexed: false },
-      { name: "reasonMask", type: "uint32", indexed: false },
-      { name: "paid", type: "uint256", indexed: false },
-      { name: "holdId", type: "uint256", indexed: false },
-      { name: "journalDigest", type: "bytes32", indexed: false },
-    ],
-  },
-] as const;
+// The ABI is generated from the compiled contract (scripts/gen-abi.mjs) rather
+// than copied here, so it cannot drift from what is actually deployed.
+export { GATE_ABI } from "./abi.ts";
+import { GATE_ABI } from "./abi.ts";
 
 const OUTCOME_BY_CODE: readonly Outcome[] = ["PAID", "HELD", "REJECTED"];
 
