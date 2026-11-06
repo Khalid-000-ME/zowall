@@ -44,6 +44,7 @@ export async function GET(request: Request) {
       current: open
         ? {
             poId: open.id.toString(),
+            qty: open.qty.toString(),
             received: open.received.toString(),
             invoiced: open.invoicedQty.toString(),
             holdId: hold ? hold.id.toString() : null,

@@ -21,6 +21,14 @@ the UI preview, so the three can never disagree about a decision.
 pnpm --filter @zowall/gate-core test   # node's own test runner, no vitest
 ```
 
+## What a unit is
+
+The engine multiplies a quantity by a unit price and nothing more, so a unit is whatever is
+being bought: a monitor, an hour of compute, one metered API call. Reserve first, match the
+document, release only when it agrees. Only the nouns change, and what counts as evidence of
+delivery: for goods it is a person signing for them, for a metered service it is a usage log,
+and the open question is always who keeps that record independently of the party being paid.
+
 ## Decisions worth knowing about
 
 **Every failing code is returned, not the first.** A clerk needs the whole list

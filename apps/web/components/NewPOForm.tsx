@@ -69,9 +69,13 @@ export function NewPOForm() {
       ) : null}
 
       <Row label="What is being bought" name="description" placeholder="2 monitors" defaultValue="2 monitors" />
+      <p style={{ margin: "calc(var(--space-2) * -1) 0 0", fontSize: 13, color: "var(--text-muted)" }}>
+        A unit is whatever is being bought: a monitor, an hour of compute, one metered API call.
+        Quantity times unit price is all the contract sees.
+      </p>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
-        <Row label="Quantity (1 to 20)" name="qty" placeholder="2" defaultValue="2" />
+        <Row label="Quantity (1 to 10,000)" name="qty" placeholder="2" defaultValue="2" />
         <Row label="Unit price, USDT (up to 5)" name="unitPrice" placeholder="1.00" defaultValue="1" />
       </div>
 

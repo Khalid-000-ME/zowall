@@ -352,7 +352,7 @@ function person(key: string | undefined, label: string, strict = false): Human {
 
 /* ------------------------------------------------------------ purchase order -- */
 
-const MAX_QTY = 20n;
+const MAX_QTY = 10_000n;
 const MAX_UNIT = parseUsdt("5");
 
 export async function raisePO(input: {

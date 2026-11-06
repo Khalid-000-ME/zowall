@@ -20,7 +20,7 @@ type Info = {
   missing: string[];
   humans: Human[];
   vault: { display: { balance: string; encumbered: string; free: string } } | null;
-  current: { poId: string; received: string; invoiced: string; holdId: string | null } | null;
+  current: { poId: string; qty: string; received: string; invoiced: string; holdId: string | null } | null;
 };
 
 type Run = {
@@ -67,24 +67,82 @@ type StepId =
   | "approve"
   | "replay";
 
+/**
+ * What is being bought. The contract only multiplies a quantity by a unit price, so a
+ * unit can be a monitor, an hour of compute or one metered API call. The control is
+ * the same in every case: reserve first, match the document, release only when it
+ * agrees. Only the nouns and the evidence of delivery differ.
+ */
+type Scenario = {
+  label: string;
+  blurb: string;
+  description: string;
+  qty: number;
+  unitPrice: string;
+  order: string;
+  arrived: string;
+  half: string;
+  rest: string;
+  base: string;
+  over: string;
+  limit: string;
+  evidence: string;
+};
+
+const SCENARIOS: Record<"goods" | "metered", Scenario> = {
+  goods: {
+    label: "Goods",
+    blurb: "Physical goods: the textbook three-way match.",
+    description: "2 monitors",
+    qty: 2,
+    unitPrice: "1",
+    order: "2 monitors",
+    arrived: "both monitors arrived",
+    half: "One of the two monitors",
+    rest: "the second monitor",
+    base: "1.00",
+    over: "1.20",
+    limit: "1.05",
+    evidence: "A second person confirms both monitors arrived.",
+  },
+  metered: {
+    label: "Metered service",
+    blurb: "An agent buying metered API calls, the sort of purchase x402 prices per request.",
+    description: "200 metered API calls from a data vendor",
+    qty: 200,
+    unitPrice: "0.01",
+    order: "200 metered API calls",
+    arrived: "the calls were delivered and counted",
+    half: "100 of the 200 calls",
+    rest: "the other 100 calls",
+    base: "0.01",
+    over: "0.012",
+    limit: "0.0105",
+    evidence:
+      "A second person confirms the calls were delivered. For a metered service the evidence is a usage log, so this is where an independent check of that log belongs.",
+  },
+};
+
 const STEPS: Array<{
   id: StepId;
   act: (typeof ACTS)[number]["id"];
   title: string;
-  what: string;
+  what: string | ((s: Scenario) => string);
   needs?: "po" | "hold";
 }> = [
   {
     id: "po",
     act: "setup",
     title: "Raise a purchase order",
-    what: "The creator orders 2 monitors at 1.00 USDT with a 5% price tolerance. The contract reserves 2.10 USDT out of the vault before anything ships, so the vendor can see the money is set aside. The reservation covers the tolerance ceiling, not just the headline total, because an invoice at 1.05 is allowed and has to be payable.",
+    what: (s) =>
+      `The creator orders ${s.order} at ${s.base} USDT each with a 5% price tolerance. The contract reserves 2.10 USDT out of the vault before anything is delivered, so the vendor can see the money is set aside. The reservation covers the tolerance ceiling, not just the headline total, because an invoice at ${s.limit} is allowed and has to be payable.`,
   },
   {
     id: "receipt",
     act: "setup",
     title: "Sign for the delivery",
-    what: "A second person confirms both monitors arrived. The contract refuses a receiver who is the person who raised the order, so a buyer cannot vouch for its own deliveries.",
+    what: (s) =>
+      `${s.evidence} The contract refuses a receiver who is the person who raised the order, so a buyer cannot vouch for its own deliveries.`,
     needs: "po",
   },
   {
@@ -111,7 +169,8 @@ const STEPS: Array<{
     id: "matching",
     act: "match",
     title: "Pay a matching invoice",
-    what: "One of the two monitors, at the agreed price, signed by the vendor key and paid to the address on the order. It settles in USDT in a single transaction.",
+    what: (s) =>
+      `${s.half}, at the agreed price, signed by the vendor key and paid to the address on the order. It settles in USDT in a single transaction.`,
     needs: "po",
   },
   {
@@ -125,7 +184,8 @@ const STEPS: Array<{
     id: "overpriced",
     act: "exceptions",
     title: "An invoice that is over price",
-    what: "The vendor bills the second monitor at 1.20 instead of 1.00, past the 5% tolerance. A soft failure parks the invoice as a hold instead of refusing it. The money stays reserved while a person decides.",
+    what: (s) =>
+      `The vendor bills ${s.rest} at ${s.over} instead of ${s.base}, past the 5% tolerance. A soft failure parks the invoice as a hold instead of refusing it. The money stays reserved while a person decides.`,
     needs: "po",
   },
   {
@@ -162,6 +222,8 @@ export function Walkthrough({ topicUrl, gate }: { topicUrl: string | null; gate:
   const [text, setText] = useState(SAMPLE_ATTACKS[0]?.text ?? "");
   const [resetting, setResetting] = useState(false);
   const [strict, setStrict] = useState(false);
+  const [scenarioId, setScenarioId] = useState<keyof typeof SCENARIOS>("goods");
+  const [raisedQty, setRaisedQty] = useState<number | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -195,6 +257,12 @@ export function Walkthrough({ topicUrl, gate }: { topicUrl: string | null; gate:
   // The deployment can require verification outright. The switch below can only make
   // it stricter, never looser, and the server applies the same rule either way.
   const enforce = strict || Boolean(info?.requireVerified);
+
+  // Quantities follow the order that exists, not the scenario selected, so a refreshed
+  // page or a changed selection cannot send a step the wrong amount.
+  const scenario = SCENARIOS[scenarioId];
+  const poQty = raisedQty ?? (info?.current ? Number(info.current.qty) : scenario.qty);
+  const half = Math.max(1, Math.floor(poQty / 2));
   const unverified = info?.humans.find((h) => !h.enrolled);
 
   async function run(id: StepId, job: () => Promise<Partial<Run> & { result?: StepResult }>) {
@@ -236,7 +304,7 @@ export function Walkthrough({ topicUrl, gate }: { topicUrl: string | null; gate:
       const { result } = await post<{ result: StepResult }>("/api/demo/invoice", {
         poId,
         kind,
-        qty: "1",
+        qty: String(half),
         nonce,
       });
       if (setHold && result.holdId) setHoldId(result.holdId);
@@ -251,14 +319,15 @@ export function Walkthrough({ topicUrl, gate }: { topicUrl: string | null; gate:
         onClick={() =>
           run("po", async () => {
             const { result } = await post<{ result: StepResult }>("/api/demo/po", {
-              description: "2 monitors",
-              qty: "2",
-              unitPrice: "1",
+              description: scenario.description,
+              qty: String(scenario.qty),
+              unitPrice: scenario.unitPrice,
               tolerancePct: "5",
               creator: cast.creator,
               requireVerified: enforce,
             });
             if (result.poId) {
+              setRaisedQty(scenario.qty);
               setPoId(result.poId);
               setHoldId(null);
             }
@@ -275,7 +344,7 @@ export function Walkthrough({ topicUrl, gate }: { topicUrl: string | null; gate:
           run("receipt", async () => {
             const { result } = await post<{ result: StepResult }>("/api/demo/receipt", {
               poId,
-              qty: "2",
+              qty: String(poQty),
               receiver: cast.receiver,
               requireVerified: enforce,
             });
@@ -445,6 +514,7 @@ export function Walkthrough({ topicUrl, gate }: { topicUrl: string | null; gate:
       setRuns({});
       setPoId(null);
       setHoldId(null);
+      setRaisedQty(null);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : String(err));
     } finally {
@@ -519,6 +589,37 @@ export function Walkthrough({ topicUrl, gate }: { topicUrl: string | null; gate:
               </div>
             ) : null}
           </div>
+        </div>
+
+        <div style={{ borderTop: "1px solid var(--border)", paddingTop: "var(--space-4)" }}>
+          <div style={{ fontSize: 12, color: "var(--text-faint)", letterSpacing: "0.06em", marginBottom: 8 }}>
+            WHAT IS BEING BOUGHT
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {(Object.keys(SCENARIOS) as Array<keyof typeof SCENARIOS>).map((id) => (
+              <button
+                key={id}
+                type="button"
+                disabled={busy}
+                onClick={() => setScenarioId(id)}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: "var(--radius-sm)",
+                  border: `1px solid ${scenarioId === id ? "var(--accent)" : "var(--border-strong)"}`,
+                  background: scenarioId === id ? "var(--accent)" : "transparent",
+                  color: scenarioId === id ? "var(--accent-text)" : "var(--text)",
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+              >
+                {SCENARIOS[id].label}
+              </button>
+            ))}
+          </div>
+          <p style={{ margin: "var(--space-2) 0 0", fontSize: 13, color: "var(--text-muted)", lineHeight: 1.55 }}>
+            {scenario.blurb} The contract only multiplies a quantity by a unit price, so the control
+            is identical either way. This sets the next order raised in step 1.
+          </p>
         </div>
 
         <div style={{ borderTop: "1px solid var(--border)", paddingTop: "var(--space-4)" }}>
@@ -637,7 +738,7 @@ export function Walkthrough({ topicUrl, gate }: { topicUrl: string | null; gate:
                   </div>
 
                   <p style={{ color: "var(--text-muted)", margin: "var(--space-2) 0 var(--space-4)" }}>
-                    {step.what}
+                    {typeof step.what === "function" ? step.what(scenario) : step.what}
                   </p>
 
                   <div>{actions[step.id]}</div>
