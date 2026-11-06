@@ -130,6 +130,9 @@ importers:
 
   packages/x402:
     dependencies:
+      '@hashgraph/sdk':
+        specifier: 2.64.5
+        version: 2.64.5(bn.js@5.2.5)(react-native@0.88.1(@babel/core@7.29.13)(react@19.3.1))
       '@zowall/gate-core':
         specifier: workspace:*
         version: link:../gate-core
