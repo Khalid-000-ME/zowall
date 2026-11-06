@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Instrument_Serif, Inter, JetBrains_Mono, Syne } from "next/font/google";
+import { GeistPixelSquare } from "geist/font/pixel/square";
+
 import "./globals.css";
 
 const display = Instrument_Serif({
@@ -26,6 +28,18 @@ const ui = Inter({
   display: "swap",
 });
 
+/*
+ * The wordmark only: the name beside the logo. A geometric display face with
+ * a distinctive wide, low-slung "w", so the name reads as a mark and not as
+ * more body text. Nothing else in the product uses it.
+ */
+const brand = Syne({
+  subsets: ["latin"],
+  weight: "700",
+  variable: "--font-brand",
+  display: "swap",
+});
+
 const mono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
@@ -41,7 +55,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${display.variable} ${body.variable} ${ui.variable} ${mono.variable}`}>
+    <html lang="en" className={`${display.variable} ${body.variable} ${ui.variable} ${mono.variable} ${GeistPixelSquare.variable} ${brand.variable}`}>
       <body>{children}</body>
     </html>
   );
