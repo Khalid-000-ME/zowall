@@ -35,7 +35,14 @@ import {
 } from "@zowall/gate-core";
 import { decodePreimage, type JournalEntry } from "@zowall/journal";
 import { GATE_ABI, signInvoice } from "@zowall/sdk";
-import { signAttestation, type Role } from "@zowall/world";
+import {
+  cancelActionHash,
+  createActionHash,
+  holdActionHash,
+  receiptActionHash,
+  signAttestation,
+  type Role,
+} from "@zowall/world";
 
 import { getHold, getPO, getPOs, getVault, invalidateChainCache, publicClient, whitechainSepolia } from "@/lib/chain";
 import { txUrl } from "@/lib/chains";
@@ -63,7 +70,7 @@ function context() {
     !env.usdtAddress && "USDT_ADDRESS",
     !env.deployerKey && "PRIVATE_KEY",
     !env.vendorKey && "VENDOR_PRIVATE_KEY",
-    !env.attestorKey && "ATTESTOR_PRIVATE_KEY",
+    env.attestorKeys.length === 0 && "ATTESTOR_PRIVATE_KEYS",
   ].filter((m): m is string => typeof m === "string");
   if (missing.length > 0) {
     throw new DemoError(`Not configured: ${missing.join(", ")}`, 503);
@@ -80,7 +87,8 @@ function context() {
     env,
     gate: env.gateAddress!,
     usdt: env.usdtAddress!,
-    attestorKey: env.attestorKey!,
+    attestorKeys: env.attestorKeys,
+    attestorThreshold: env.attestorThreshold,
     deployer,
     vendor,
     wallet,
@@ -320,10 +328,21 @@ export async function writeJournal(entries: JournalEntry[]): Promise<void> {
 
 /* ----------------------------------------------------------- attestations --- */
 
-async function attest(c: Ctx, human: Human, role: Role, poId: bigint) {
+/**
+ * Every attestation commits to the action it authorises, and the contract
+ * recomputes that hash from the call's own arguments. So callers pass the
+ * action hash for exactly the arguments they are about to send.
+ */
+async function attest(c: Ctx, human: Human, role: Role, poId: bigint, actionHash: Bytes32) {
   return signAttestation(
-    { personId: human.personId, role, poId },
-    { privateKey: c.attestorKey, chainId: c.env.chainId, gateAddress: c.gate, ttlSeconds: 600 },
+    { personId: human.personId, role, poId, actionHash },
+    {
+      privateKeys: c.attestorKeys,
+      threshold: c.attestorThreshold,
+      chainId: c.env.chainId,
+      gateAddress: c.gate,
+      ttlSeconds: 600,
+    },
   );
 }
 
@@ -361,6 +380,12 @@ export async function raisePO(input: {
   unitPrice: string;
   tolerancePct: string;
   creator: string;
+  /**
+   * Who is paid. Defaults to the vendor, which is right for goods. An x402
+   * mandate names the resource server's account instead, as an EVM address
+   * (a Hedera account's is derived from its number).
+   */
+  payee?: string;
   requireVerified?: boolean;
 }): Promise<Journalled> {
   const c = context();
@@ -384,6 +409,12 @@ export async function raisePO(input: {
 
   const description = (input.description || "Purchase order").slice(0, 120);
 
+  let payee: Address | undefined;
+  if (input.payee) {
+    if (!/^0x[0-9a-fA-F]{40}$/.test(input.payee)) throw new DemoError("Payee must be a 20-byte EVM address.");
+    payee = input.payee as Address;
+  }
+
   // The reservation is the tolerance ceiling, not the headline total, so say so
   // before the chain does with a revert.
   const reserve = qty * unit + (qty * unit * BigInt(tolBps)) / 10_000n;
@@ -395,26 +426,26 @@ export async function raisePO(input: {
     );
   }
 
-  const attestation = await attest(c, creator, "Creator", 0n);
+  // The terms are fixed before the attestation is signed, because the
+  // attestation commits to them: the contract will refuse it for any other.
+  const terms = {
+    vendor: c.vendor.address,
+    payee: payee ?? c.vendor.address,
+    specHash: keccak256(toHex(description)),
+    qty,
+    unitPrice: unit,
+    priceTolBps: tolBps,
+    qtyTolBps: 0,
+    expiry: BigInt(Math.floor(Date.now() / 1000) + 86_400),
+  };
+  const attestation = await attest(c, creator, "Creator", 0n, createActionHash(terms));
 
   const out = await serial(async () => {
     const hash = await c.wallet.writeContract({
       address: c.gate,
       abi: GATE_ABI,
       functionName: "createPO",
-      args: [
-        {
-          vendor: c.vendor.address,
-          payee: c.vendor.address,
-          specHash: keccak256(toHex(description)),
-          qty,
-          unitPrice: unit,
-          priceTolBps: tolBps,
-          qtyTolBps: 0,
-          expiry: BigInt(Math.floor(Date.now() / 1000) + 86_400),
-        },
-        attestation,
-      ],
+      args: [terms, attestation],
     });
     return summarise(c, hash);
   });
@@ -437,7 +468,8 @@ export async function attestDelivery(input: {
   const po = await getPO(poId);
   if (!po) throw new DemoError(`No purchase order #${poId}.`);
 
-  const attestation = await attest(c, receiver, "Receiver", poId);
+  const deliverable = keccak256(toHex(`delivered:${poId}:${qty}:${Date.now()}`));
+  const attestation = await attest(c, receiver, "Receiver", poId, receiptActionHash(poId, qty, deliverable));
 
   return serial(async () => {
     let hash: `0x${string}`;
@@ -446,7 +478,7 @@ export async function attestDelivery(input: {
         address: c.gate,
         abi: GATE_ABI,
         functionName: "attestReceipt",
-        args: [poId, qty, keccak256(toHex(`delivered:${poId}:${qty}:${Date.now()}`)), attestation],
+        args: [poId, qty, deliverable, attestation],
       });
     } catch (err) {
       throw refusal(err);
@@ -588,7 +620,7 @@ export async function resolveHoldAs(input: {
   if (!hold) throw new DemoError(`No hold #${holdId}.`);
   if (hold.resolved) throw new DemoError(`Hold #${holdId} is already resolved.`, 409);
 
-  const attestation = await attest(c, approver, "Approver", hold.poId);
+  const attestation = await attest(c, approver, "Approver", hold.poId, holdActionHash(holdId, input.approve));
   const args = [holdId, input.approve, attestation] as const;
 
   return serial(async () => {
@@ -661,7 +693,7 @@ export async function resetDemo(): Promise<{
   for (const po of await getPOs()) {
     if (po.status !== "Open") continue;
     const creator: Human = { key: po.creatorPersonId, name: "creator", personId: po.creatorPersonId, enrolled: false };
-    const attestation = await attest(c, creator, "Creator", po.id);
+    const attestation = await attest(c, creator, "Creator", po.id, cancelActionHash(po.id));
     const out = await serial(async () => {
       const hash = await c.wallet.writeContract({
         address: c.gate,

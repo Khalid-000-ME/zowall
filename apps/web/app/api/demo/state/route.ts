@@ -15,7 +15,7 @@ export async function GET(request: Request) {
       !env.gateAddress && "GATE_ADDRESS",
       !env.deployerKey && "PRIVATE_KEY",
       !env.vendorKey && "VENDOR_PRIVATE_KEY",
-      !env.attestorKey && "ATTESTOR_PRIVATE_KEY",
+      env.attestorKeys.length === 0 && "ATTESTOR_PRIVATE_KEYS",
     ].filter((m): m is string => typeof m === "string");
 
     const vault = env.gateAddress ? await getVault().catch(() => null) : null;

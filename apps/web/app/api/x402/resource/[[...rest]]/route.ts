@@ -1,74 +1,113 @@
 import { NextResponse } from "next/server";
 
-import { PAYMENT_HEADER, PAYMENT_RESPONSE_HEADER } from "@zowall/x402";
+import {
+  PAYMENT_REQUIRED_HEADER,
+  PAYMENT_RESPONSE_HEADER,
+  PAYMENT_SIGNATURE_HEADER,
+  decodeHeader,
+  encodeHeader,
+} from "@zowall/x402";
+
+import { NETWORK, feePayer, settle, verify } from "@/lib/x402-facilitator";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 /**
- * A stand-in for somebody else's paid API.
+ * A paid API, speaking x402 v2 on Hedera.
  *
- * The middleware has to be shown refusing a payment to a server it does not
- * control, and pointing the demo at a real third-party endpoint would mean
- * either settling real money on every click or faking the settlement anyway.
- * So this is an honest local stand-in: it speaks the protocol correctly - a
- * 402 with a proper `accepts` array, a 200 once `X-PAYMENT` is present, and a
- * base64 `X-PAYMENT-RESPONSE` on the way back - and it lies about nothing
- * except being a stranger.
+ * It is a real resource server: it quotes a price in a `PAYMENT-REQUIRED`
+ * header, takes the payment from `PAYMENT-SIGNATURE`, has a facilitator verify
+ * and then settle it on Hedera testnet, and only then answers. The money that
+ * moves is real testnet HBAR and the transaction id it returns is a real
+ * transaction on HashScan.
  *
- * The query parameters are how the attacks are staged. A compromised or greedy
- * endpoint is exactly one that quotes a different `payTo` or a higher price
- * than the one a human agreed to, so those are parameters rather than separate
- * routes.
+ * What makes it stand in for "somebody else's API" is only that we run it, so
+ * that the middleware can be shown refusing a server it does not control. The
+ * query parameters are how the misbehaving server is staged: a compromised or
+ * greedy endpoint is exactly one that quotes a different `payTo` or a higher
+ * price than the one a person agreed to.
  */
-const DEFAULT_PRICE = "10000"; // 0.01 USDC, 6 decimals
-const DEFAULT_PAY_TO = "0x2222222222222222222222222222222222222222";
+const DEFAULT_PRICE = "10000";
 
-function quoteFor(url: URL) {
-  const resource = `${url.origin}${url.pathname}`;
+async function requirements(url: URL) {
   return {
     scheme: "exact",
-    network: process.env.X402_NETWORK ?? "hedera-testnet",
-    maxAmountRequired: url.searchParams.get("price") ?? DEFAULT_PRICE,
-    asset: process.env.X402_ASSET ?? "0.0.429274",
-    payTo: url.searchParams.get("payTo") ?? process.env.X402_PAY_TO ?? DEFAULT_PAY_TO,
-    resource,
-    description: "One forecast for the next hour",
-    mimeType: "application/json",
+    network: NETWORK,
+    amount: url.searchParams.get("price") ?? DEFAULT_PRICE,
+    asset: "0.0.0",
+    payTo: url.searchParams.get("payTo") ?? process.env.X402_PAY_TO ?? "",
     maxTimeoutSeconds: 60,
+    extra: { feePayer: await feePayer() },
   };
 }
 
 async function handle(request: Request) {
   const url = new URL(request.url);
-  const payment = request.headers.get(PAYMENT_HEADER);
+  const resource = {
+    url: `${url.origin}${url.pathname}`,
+    description: "One forecast for the next hour",
+    mimeType: "application/json",
+  };
 
-  if (!payment) {
+  let accepted: Awaited<ReturnType<typeof requirements>>;
+  try {
+    accepted = await requirements(url);
+  } catch (err) {
+    return NextResponse.json({ error: `facilitator unavailable: ${String(err)}` }, { status: 503 });
+  }
+
+  const header = request.headers.get(PAYMENT_SIGNATURE_HEADER);
+
+  if (!header) {
+    const required = {
+      x402Version: 2,
+      error: `${PAYMENT_SIGNATURE_HEADER} header is required`,
+      resource,
+      accepts: [accepted],
+    };
+    return new NextResponse(JSON.stringify(required), {
+      status: 402,
+      headers: {
+        "content-type": "application/json",
+        [PAYMENT_REQUIRED_HEADER]: encodeHeader(required),
+      },
+    });
+  }
+
+  const payload = decodeHeader<{ payload?: unknown }>(header);
+  if (!payload) {
+    return NextResponse.json({ error: "the payment header is not valid base64 JSON" }, { status: 400 });
+  }
+
+  // The requirements are rebuilt here from the request, never taken from what
+  // the client sent back, so a client cannot change what it is being asked to pay.
+  const envelope = { paymentPayload: payload, paymentRequirements: accepted };
+
+  const checked = await verify(envelope);
+  if (!checked.isValid) {
     return NextResponse.json(
-      { x402Version: 1, error: "X-PAYMENT header is required", accepts: [quoteFor(url)] },
+      { error: "payment not accepted", reason: checked.invalidReason, detail: checked.invalidMessage },
       { status: 402 },
     );
   }
 
-  // A real resource server verifies and settles through a facilitator here.
-  // This one reports a settlement it did not perform, and says so: the
-  // transaction id below is marked as simulated so nothing downstream can
-  // mistake it for an on-chain payment.
-  const settlement = {
-    success: true,
-    transaction: "simulated",
-    network: process.env.X402_NETWORK ?? "hedera-testnet",
-    payer: "demo-agent",
-  };
+  const settled = await settle(envelope);
+  if (!settled.success) {
+    return NextResponse.json({ error: "settlement failed", reason: settled.errorReason }, { status: 402 });
+  }
 
   return NextResponse.json(
-    {
-      forecast: "clear, 24C",
-      note: "This endpoint stands in for a third-party x402 API. No money moved.",
-    },
+    { forecast: "clear, 24C" },
     {
       status: 200,
       headers: {
-        [PAYMENT_RESPONSE_HEADER]: Buffer.from(JSON.stringify(settlement)).toString("base64"),
+        [PAYMENT_RESPONSE_HEADER]: encodeHeader({
+          success: true,
+          transaction: settled.transaction,
+          network: settled.network ?? NETWORK,
+          payer: settled.payer,
+        }),
       },
     },
   );

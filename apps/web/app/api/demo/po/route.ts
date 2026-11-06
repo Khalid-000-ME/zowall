@@ -14,6 +14,7 @@ export async function POST(request: Request) {
       unitPrice: string;
       tolerancePct: string;
       creator: string;
+      payee?: string;
       requireVerified?: boolean;
     }>(request);
 

@@ -22,7 +22,9 @@ export type ServerEnv = {
   hederaKey: string | null;
   hederaSubmitKey: string | null;
   usdtAddress: `0x${string}` | null;
-  attestorKey: `0x${string}` | null;
+  /** The attestor quorum's keys. In production each is a separate service. */
+  attestorKeys: `0x${string}`[];
+  attestorThreshold: number;
   hederaTopicId: string | null;
   worldRpId: string | null;
 };
@@ -45,7 +47,11 @@ export function serverEnv(): ServerEnv {
     hederaKey: process.env.HEDERA_PRIVATE_KEY ?? null,
     hederaSubmitKey: process.env.HEDERA_SUBMIT_KEY ?? null,
     usdtAddress: hex(process.env.USDT_ADDRESS),
-    attestorKey: hex(process.env.ATTESTOR_PRIVATE_KEY),
+    attestorKeys: (process.env.ATTESTOR_PRIVATE_KEYS ?? process.env.ATTESTOR_PRIVATE_KEY ?? "")
+      .split(",")
+      .map((k) => hex(k.trim()))
+      .filter((k): k is `0x${string}` => k !== null),
+    attestorThreshold: Number(process.env.ATTESTOR_THRESHOLD ?? "1"),
     hederaTopicId: process.env.HEDERA_TOPIC_ID ?? null,
     worldRpId: process.env.WORLD_RP_ID ?? null,
   };
@@ -56,7 +62,7 @@ export function missing(env: ServerEnv): string[] {
   return [
     !env.gateAddress && "GATE_ADDRESS",
     !env.usdtAddress && "USDT_ADDRESS",
-    !env.attestorKey && "ATTESTOR_PRIVATE_KEY",
+    env.attestorKeys.length === 0 && "ATTESTOR_PRIVATE_KEYS",
     !env.hederaTopicId && "HEDERA_TOPIC_ID",
     !env.worldRpId && "WORLD_RP_ID",
   ].filter((v): v is string => typeof v === "string");

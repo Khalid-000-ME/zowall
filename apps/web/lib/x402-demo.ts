@@ -13,6 +13,7 @@
 
 import { keccak256, toHex } from "viem";
 import type { Bytes32, PurchaseOrder, Roles } from "@zowall/gate-core";
+import { Client, PrivateKey } from "@hashgraph/sdk";
 import {
   createGuard,
   resourceSpecHash,
@@ -20,6 +21,15 @@ import {
   type GuardDecision,
   type PaymentRequirements,
 } from "@zowall/x402";
+import {
+  GuardianRefused,
+  buildAgentSignedTransfer,
+  createGuardian,
+  guardianQuorum,
+  toPayload,
+} from "@zowall/x402/hedera";
+
+import { NETWORK, feePayer, verify } from "@/lib/x402-facilitator";
 
 import { getDecisions, getPOs } from "@/lib/chain";
 
@@ -31,7 +41,8 @@ export type ScenarioId =
   | "unauthorised"
   | "payee-swap"
   | "price-hike"
-  | "replay";
+  | "replay"
+  | "bypass";
 
 export const SCENARIOS: ReadonlyArray<{
   id: ScenarioId;
@@ -69,6 +80,13 @@ export const SCENARIOS: ReadonlyArray<{
     blurb: "A quote that was already decided is presented again.",
     expect: "DUPLICATE_INVOICE",
   },
+  {
+    id: "bypass",
+    title: "The agent skips the middleware",
+    blurb:
+      "A compromised agent ignores the guard and signs the payment itself. Hedera, not the middleware, refuses.",
+    expect: "Refused by the facilitator",
+  },
 ];
 
 export type RunResult = {
@@ -86,6 +104,13 @@ export type RunResult = {
   /** the body the agent ended up with */
   status: number;
   settled: boolean;
+  /** what Hedera reported for a payment that went through */
+  settlement: { transaction: string; network: string; payer: string } | null;
+  /** present for the bypass scenario: what the ledger side did with a payment that skipped the guard */
+  bypass: {
+    agentAlone: { accepted: boolean; reason: string };
+    guardians: { signed: number; refused: string };
+  } | null;
 };
 
 /** The mandate for a resource: an open PO whose spec is that URL. */
@@ -121,6 +146,14 @@ export function mandateSpecHash(resource: string): Bytes32 {
 }
 
 /**
+ * The Hedera account an attacker would like to be paid at. It has to be a real
+ * account so that a payment that DID reach the ledger would have somewhere to
+ * land; here it is the operator account, which is ours and only ever the target
+ * of a payment that is refused.
+ */
+const ATTACKER = () => process.env.HEDERA_ACCOUNT_ID ?? "0.0.800";
+
+/**
  * The URL the agent is pointed at for a given scenario.
  *
  * Only `unauthorised` changes the path. The other attacks keep the same
@@ -128,25 +161,14 @@ export function mandateSpecHash(resource: string): Bytes32 {
  * the problem: the endpoint you agreed to is the one most able to overcharge
  * you.
  */
-function targetFor(
-  scenario: ScenarioId,
-  origin: string,
-  resource: string,
-  agreedPayee: string | null,
-): string {
+function targetFor(scenario: ScenarioId, origin: string, resource: string): string {
   const url = new URL(resource);
-
-  // The stand-in endpoint has to quote the payee the mandate actually names,
-  // or every scenario would report a payee mismatch and the other attacks
-  // would be invisible behind it. Query parameters are safe to add: the quote
-  // declares its `resource` as the bare path, so the mandate still matches.
-  if (agreedPayee) url.searchParams.set("payTo", agreedPayee);
 
   switch (scenario) {
     case "unauthorised":
       return `${origin}/api/x402/resource/other`;
     case "payee-swap":
-      url.searchParams.set("payTo", "0x000000000000000000000000000000000000dEaD");
+      url.searchParams.set("payTo", ATTACKER());
       return url.toString();
     case "price-hike":
       url.searchParams.set("price", "100000");
@@ -156,8 +178,28 @@ function targetFor(
   }
 }
 
+function paymentRig() {
+  const payer = process.env.X402_PAYER_ACCOUNT;
+  const agentKey = process.env.X402_AGENT_KEY;
+  const guardianKeys = (process.env.X402_GUARDIAN_KEYS ?? "").split(",").filter(Boolean);
+  const threshold = Number(process.env.X402_GUARDIAN_THRESHOLD ?? "2");
+  if (!payer || !agentKey || guardianKeys.length < threshold) return null;
+  return {
+    payer,
+    agent: PrivateKey.fromStringECDSA(agentKey),
+    guardians: guardianKeys.map((k) => PrivateKey.fromStringECDSA(k)),
+    threshold,
+  };
+}
+
 export async function runScenario(scenario: ScenarioId, origin: string): Promise<RunResult> {
   const resource = `${origin}/api/x402/resource`;
+  const rig = paymentRig();
+  if (!rig) {
+    throw new Error(
+      "X402_PAYER_ACCOUNT, X402_AGENT_KEY and X402_GUARDIAN_KEYS are not set. Run packages/x402/scripts/guardian-setup.ts.",
+    );
+  }
 
   // Roles come from the mandate itself once it is found. Until then the
   // creator is unknown, which is fine: with no mandate the answer is NO_PO
@@ -177,55 +219,186 @@ export async function runScenario(scenario: ScenarioId, origin: string): Promise
     };
   }
 
-  const target = targetFor(scenario, origin, resource, mandate ? mandate.payee : null);
+  const target = targetFor(scenario, origin, resource);
+  const client = Client.forTestnet();
 
   let captured: GuardDecision | null = null;
   let signed = false;
   let settled = false;
+  let settlement: RunResult["settlement"] = null;
+  let bypass: RunResult["bypass"] = null;
 
-  const guard = createGuard({
-    keccak256: keccakHex,
-    // The unauthorised scenario must miss, so the lookup is by the URL that
-    // was actually called, not by the one we hoped for.
-    findMandate: (r) => findMandate(r),
-    roles,
-    seen: scenario === "replay" ? () => true : () => false,
-    now: () => BigInt(Math.floor(Date.now() / 1000)),
-    record: (d) => {
-      captured = d;
-    },
+  const seen = scenario === "replay" ? () => true : () => false;
+  const policy = (record?: (d: GuardDecision) => void) =>
+    createGuard({
+      keccak256: keccakHex,
+      // The unauthorised scenario must miss, so the lookup is by the URL that
+      // was actually called, not by the one we hoped for.
+      findMandate: (r) => findMandate(r),
+      roles,
+      seen,
+      now: () => BigInt(Math.floor(Date.now() / 1000)),
+      ...(record ? { record } : {}),
+    });
+
+  // The middleware's own guard records the decision for display. Each guardian
+  // gets an independent guard of its own: they share no state, because in a real
+  // deployment they are separate services run by separate parties.
+  const guard = policy((d) => {
+    captured = d;
+  });
+  const guardians = rig.guardians.map((key) =>
+    createGuardian({ key, guard: policy(), payer: rig.payer }),
+  );
+
+  try {
+    if (scenario === "bypass") {
+      bypass = await attemptBypass({ client, rig, guardians, target });
+    }
+
+    const guarded = withZowall({
+      guard,
+      signPayment: async (req) => {
+        signed = true;
+        // The agent signs, then a quorum of guardians each decode the
+        // transaction for themselves and sign it only if it does what the quote
+        // says and the mandate allows. The payer's key is the threshold
+        // structure; without both parts the network will not move the money.
+        const bytes = await buildAgentSignedTransfer({
+          client,
+          requirements: req,
+          payer: rig.payer,
+          agent: rig.agent,
+        });
+        const quorum = await guardianQuorum(bytes, req, guardians, rig.threshold);
+        return { payload: toPayload(quorum.bytes) };
+      },
+      onSettled: (s) => {
+        settled = true;
+        settlement = {
+          transaction: s.transactionId ?? s.transaction ?? "",
+          network: s.network,
+          payer: s.payer,
+        };
+      },
+    });
+
+    // A guardian refusing surfaces as a thrown error from signPayment. That is
+    // still a refusal, so report it as one rather than as a server fault.
+    let response: Response;
+    try {
+      response = await guarded(target, { method: "GET" });
+    } catch (err) {
+      if (!(err instanceof GuardianRefused)) throw err;
+      response = new Response(JSON.stringify({ error: err.message }), { status: 402 });
+    }
+
+    const decision = captured as GuardDecision | null;
+
+    return {
+      scenario,
+      target,
+      quote: decision?.requirements ?? null,
+      outcome: scenario === "bypass" ? "REJECTED" : decision ? decision.decision.outcome : "NO_QUOTE",
+      codes: decision ? decision.decision.codes : [],
+      reason:
+        scenario === "bypass"
+          ? "The payment skipped the guard, so Hedera refused it."
+          : (decision?.reason ?? "The endpoint did not ask to be paid."),
+      signed: scenario === "bypass" ? false : signed,
+      mandateId: decision?.mandate ? decision.mandate.id.toString() : null,
+      status: scenario === "bypass" ? 402 : response.status,
+      settled,
+      settlement,
+      bypass,
+    };
+  } finally {
+    client.close();
+  }
+}
+
+/**
+ * What happens when the agent is compromised and does not call the guard at all.
+ *
+ * Two attempts, both against the real facilitator and the real guardians:
+ *
+ *  1. The agent signs a payment to the attacker by itself and submits it. The
+ *     facilitator checks the signatures against the payer account's key on the
+ *     ledger, finds the guardians missing, and refuses.
+ *  2. The agent, or a hacked middleware, lies to the guardians: it shows them a
+ *     quote naming the authorised merchant and a transaction paying the
+ *     attacker. Each guardian decodes the transaction and sees it does not
+ *     match, so none signs.
+ */
+async function attemptBypass(opts: {
+  client: Client;
+  rig: NonNullable<ReturnType<typeof paymentRig>>;
+  guardians: ReturnType<typeof createGuardian>[];
+  target: string;
+}): Promise<NonNullable<RunResult["bypass"]>> {
+  const { client, rig, guardians } = opts;
+  const fee = await feePayer();
+
+  const toAttacker: PaymentRequirements = {
+    scheme: "exact",
+    network: NETWORK,
+    amount: "10000",
+    asset: "0.0.0",
+    payTo: ATTACKER(),
+    resource: opts.target,
+    description: "a payment the guard never saw",
+    maxTimeoutSeconds: 60,
+    extra: { feePayer: fee },
+  };
+
+  const bytes = await buildAgentSignedTransfer({
+    client,
+    requirements: toAttacker,
+    payer: rig.payer,
+    agent: rig.agent,
   });
 
-  const guarded = withZowall({
-    guard,
-    signPayment: async () => {
-      signed = true;
-      // A real deployment hands this to an x402 client, which signs with the
-      // agent's wallet. Nothing here holds a key, so the header is a marker
-      // that the gate allowed the payment, not an authorisation to move money.
-      return Buffer.from(
-        JSON.stringify({ x402Version: 1, scheme: "exact", note: "allowed by zowall" }),
-      ).toString("base64");
+  const accepted = {
+    scheme: toAttacker.scheme,
+    network: toAttacker.network,
+    amount: toAttacker.amount,
+    asset: toAttacker.asset,
+    payTo: toAttacker.payTo,
+    maxTimeoutSeconds: toAttacker.maxTimeoutSeconds,
+    extra: toAttacker.extra,
+  };
+  const checked = await verify({
+    paymentPayload: {
+      x402Version: 2,
+      resource: { url: toAttacker.resource, description: toAttacker.description },
+      accepted,
+      payload: toPayload(bytes),
     },
-    onSettled: () => {
-      settled = true;
-    },
+    paymentRequirements: accepted,
   });
 
-  const response = await guarded(target, { method: "GET" });
-  const decision = captured as GuardDecision | null;
+  // The lie: ask the guardians to sign this transaction while presenting a quote
+  // for the merchant the mandate does allow.
+  const honestQuote: PaymentRequirements = {
+    ...toAttacker,
+    payTo: process.env.X402_PAY_TO ?? toAttacker.payTo,
+    description: "what the middleware claims it is paying",
+  };
+  let signedCount = 0;
+  let refused = "";
+  try {
+    const q = await guardianQuorum(bytes, honestQuote, guardians, rig.threshold);
+    signedCount = q.signed;
+  } catch (err) {
+    refused = err instanceof GuardianRefused ? err.problems.join("; ") : String(err);
+  }
 
   return {
-    scenario,
-    target,
-    quote: decision?.requirements ?? null,
-    outcome: decision ? decision.decision.outcome : "NO_QUOTE",
-    codes: decision ? decision.decision.codes : [],
-    reason: decision?.reason ?? "The endpoint did not ask to be paid.",
-    signed,
-    mandateId: decision?.mandate ? decision.mandate.id.toString() : null,
-    status: response.status,
-    settled,
+    agentAlone: {
+      accepted: checked.isValid,
+      reason: checked.invalidMessage ?? checked.invalidReason ?? (checked.isValid ? "accepted" : "refused"),
+    },
+    guardians: { signed: signedCount, refused },
   };
 }
 
