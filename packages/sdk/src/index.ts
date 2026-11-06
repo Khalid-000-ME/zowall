@@ -151,4 +151,13 @@ export async function signInvoice(
   });
 }
 
+export {
+  CheckoutError,
+  createCheckoutSession,
+  serialiseInvoice,
+  type CheckoutConfig,
+  type CheckoutSession,
+  type CheckoutSessionInput,
+} from "./checkout.ts";
+
 export type { Bytes32, Invoice, Outcome, ReasonCode };

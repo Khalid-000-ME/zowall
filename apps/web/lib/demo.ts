@@ -103,7 +103,7 @@ type Ctx = ReturnType<typeof context>;
    global, because dev can load this module more than once. */
 const g = globalThis as unknown as { __zowallQueue?: Promise<unknown>; __zowallHcs?: Promise<unknown> };
 
-function serial<T>(job: () => Promise<T>): Promise<T> {
+export function serial<T>(job: () => Promise<T>): Promise<T> {
   const next = (g.__zowallQueue ?? Promise.resolve()).then(job, job);
   g.__zowallQueue = next.catch(() => undefined);
   return next;
