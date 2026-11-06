@@ -1,27 +1,11 @@
 "use client";
 
 import { IDKitRequestWidget, proofOfHuman } from "@worldcoin/idkit";
-import type { IDKitResult, RpContext } from "@worldcoin/idkit";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Hash } from "@/components/Hash";
-
-type Config = {
-  configured: boolean;
-  missing?: string[];
-  app_id?: `app_${string}`;
-  action?: string;
-  environment?: "staging" | "production" | "sandbox";
-  rp_context?: RpContext;
-};
-
-type Person = { label: string; personId: string; enrolledAt: number };
-
-type Outcome =
-  | { kind: "enrolled"; label: string; personId: string; already: boolean }
-  | { kind: "recognised" }
-  | { kind: "error"; message: string };
+import { useWorldEnroll } from "@/lib/use-world-enroll";
 
 /**
  * Enrolment: one World ID uniqueness proof per person.
@@ -31,97 +15,26 @@ type Outcome =
  * order and the person who signed for the delivery are different people. Nothing
  * else about them is asked for or kept: no name from World, no age, no document.
  *
- * Two rules carried over from the earlier project, both learned the hard way:
- * a fresh signed request is fetched every time the widget opens, because its nonce
- * is single-use and reusing one is rejected as `duplicate_nonce`; and
- * `nullifier_replayed` is not a failure, it is World recognising a person it has
- * already verified for this action.
+ * The sequence - signing a fresh request, posting the proof, reading the
+ * outcome - lives in `useWorldEnroll`, shared with the workspace's setup card.
+ * This component owns only how it looks. Two surfaces drifting apart on this
+ * particular flow is how one of them quietly stops being safe.
  */
 export function EnrollPanel() {
-  const [config, setConfig] = useState<Config | null>(null);
-  const [session, setSession] = useState<Config | null>(null);
-  const [open, setOpen] = useState(false);
-  const [preparing, setPreparing] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
-  const [outcome, setOutcome] = useState<Outcome | null>(null);
-  const [people, setPeople] = useState<Person[]>([]);
-
-  const loadPeople = useCallback(async () => {
-    try {
-      const res = await fetch("/api/world/people", { cache: "no-store" });
-      const data = (await res.json()) as { ok: boolean; people: Person[] };
-      if (data.ok) setPeople(data.people);
-    } catch {
-      // the list is a convenience; enrolment does not depend on it
-    }
-  }, []);
-
-  useEffect(() => {
-    // The probe only asks whether World is configured, so it burns no nonce.
-    void fetch("/api/world/config", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((c: Config) => setConfig(c))
-      .catch(() => setConfig({ configured: false, missing: ["the server"] }));
-    void loadPeople();
-  }, [loadPeople]);
-
-  async function begin() {
-    setPreparing(true);
-    setOutcome(null);
-    try {
-      const res = await fetch("/api/world/config?sign=1", { cache: "no-store" });
-      const signed = (await res.json()) as Config;
-      if (!signed.configured || !signed.rp_context || !signed.app_id || signed.action === undefined) {
-        setOutcome({
-          kind: "error",
-          message: `Could not build a World request${
-            signed.missing?.length ? `: missing ${signed.missing.join(", ")}` : "."
-          }`,
-        });
-        return;
-      }
-      setSession(signed);
-      setOpen(true);
-    } finally {
-      setPreparing(false);
-    }
-  }
-
-  async function finish(proof: IDKitResult) {
-    setSaving(true);
-    try {
-      // Sent as received. The server validates it with World and is the only thing
-      // that can turn it into a personId.
-      const res = await fetch("/api/world/verify", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ proof, label: name }),
-      });
-      const data = (await res.json()) as {
-        ok: boolean;
-        personId?: string;
-        label?: string;
-        alreadyEnrolled?: boolean;
-        detail?: string;
-      };
-      if (data.ok && data.personId) {
-        setOutcome({
-          kind: "enrolled",
-          label: data.label ?? name,
-          personId: data.personId,
-          already: Boolean(data.alreadyEnrolled),
-        });
-        void loadPeople();
-      } else {
-        setOutcome({ kind: "error", message: data.detail ?? "The server could not verify that proof." });
-      }
-    } catch (err) {
-      setOutcome({ kind: "error", message: String(err) });
-    } finally {
-      setSaving(false);
-    }
-  }
+  const {
+    config,
+    session,
+    open,
+    preparing,
+    saving,
+    outcome,
+    people,
+    begin,
+    finish,
+    closeWidget,
+    failWidget,
+  } = useWorldEnroll();
 
   const box: React.CSSProperties = {
     border: "1px solid var(--border)",
@@ -165,7 +78,7 @@ export function EnrollPanel() {
             <div>
               <button
                 type="button"
-                onClick={begin}
+                onClick={() => void begin()}
                 disabled={preparing || saving || name.trim() === ""}
                 style={{
                   background: "var(--accent)",
@@ -199,12 +112,7 @@ export function EnrollPanel() {
               <IDKitRequestWidget
                 key={session.rp_context.nonce}
                 open={open}
-                onOpenChange={(next) => {
-                  setOpen(next);
-                  // Drop the spent request when the modal closes so the next attempt
-                  // is forced to fetch a new nonce.
-                  if (!next) setSession(null);
-                }}
+                onOpenChange={closeWidget}
                 app_id={session.app_id}
                 action={session.action}
                 rp_context={session.rp_context}
@@ -212,25 +120,10 @@ export function EnrollPanel() {
                 environment={session.environment ?? "production"}
                 preset={proofOfHuman()}
                 onSuccess={(result) => {
-                  setOpen(false);
-                  setSession(null);
-                  void finish(result);
+                  closeWidget(false);
+                  void finish(result, name);
                 }}
-                onError={(code) => {
-                  setOpen(false);
-                  setSession(null);
-                  if (code === "nullifier_replayed") {
-                    setOutcome({ kind: "recognised" });
-                    return;
-                  }
-                  setOutcome({
-                    kind: "error",
-                    message:
-                      code === "duplicate_nonce"
-                        ? "That request was already used. Try again: a fresh one will be issued."
-                        : `World verification did not complete: ${code}`,
-                  });
-                }}
+                onError={(code) => failWidget(code)}
               />
             ) : null}
           </div>
