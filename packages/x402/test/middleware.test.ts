@@ -361,3 +361,103 @@ test("two calls to the same endpoint are different quotes, not a replay", async 
   const second = await guard.check(quote());
   assert.notEqual(first.invoice.invoiceHash, second.invoice.invoiceHash);
 });
+
+/* ------------------------------------------------------------ x402 v2 -- */
+
+const v2Required = (accepted: Record<string, unknown>) => {
+  const body = {
+    x402Version: 2,
+    error: "PAYMENT-SIGNATURE header is required",
+    resource: { url: RESOURCE, description: "One forecast", mimeType: "application/json" },
+    accepts: [accepted],
+  };
+  return new Response("{}", {
+    status: 402,
+    headers: { "content-type": "application/json", [PAYMENT_REQUIRED_HEADER]: encodeHeader(body) },
+  });
+};
+
+const hederaAccept = {
+  scheme: "exact",
+  network: "hedera:testnet",
+  amount: "10000",
+  asset: "0.0.0",
+  payTo: PAYEE,
+  maxTimeoutSeconds: 60,
+  extra: { feePayer: "0.0.9185802" },
+};
+
+test("a v2 quote is read from the PAYMENT-REQUIRED header, with the resource lifted from the top level", () => {
+  const res = v2Required(hederaAccept);
+  const q = parsePaymentRequired({}, res.headers);
+  assert.equal(q?.x402Version, 2);
+  assert.equal(q?.accepts[0]?.amount, "10000");
+  assert.equal(q?.accepts[0]?.resource, RESOURCE);
+  assert.equal(q?.accepts[0]?.network, "hedera:testnet");
+});
+
+test("a v1 quote with maxAmountRequired is normalised to the same shape", () => {
+  const q = parsePaymentRequired({
+    x402Version: 1,
+    accepts: [{ scheme: "exact", network: "base-sepolia", maxAmountRequired: "777", payTo: PAYEE, resource: RESOURCE }],
+  });
+  assert.equal(q?.accepts[0]?.amount, "777");
+});
+
+test("a v2 retry goes out in PAYMENT-SIGNATURE, wrapped in the envelope the protocol asks for", async () => {
+  let sent: { header: string | null; v1: string | null } = { header: null, v1: null };
+
+  const guarded = withZowall({
+    guard: guardFor(mandate()),
+    signPayment: async () => ({ payload: { transaction: "AAAA" } }),
+    fetch: async (_i, init) => {
+      const h = new Headers(init?.headers);
+      sent = { header: h.get(PAYMENT_SIGNATURE_HEADER), v1: h.get(PAYMENT_HEADER) };
+      return sent.header ? new Response("ok", { status: 200 }) : v2Required(hederaAccept);
+    },
+  });
+
+  const res = await guarded(RESOURCE);
+  assert.equal(res.status, 200);
+  assert.equal(sent.v1, null, "a v2 server must not be sent the v1 header");
+
+  const env = JSON.parse(Buffer.from(sent.header!, "base64").toString("utf8")) as {
+    x402Version: number;
+    accepted: { network: string; amount: string };
+    payload: { transaction: string };
+    resource: { url: string };
+  };
+  assert.equal(env.x402Version, 2);
+  assert.equal(env.accepted.network, "hedera:testnet");
+  assert.equal(env.accepted.amount, "10000");
+  assert.equal(env.payload.transaction, "AAAA");
+  assert.equal(env.resource.url, RESOURCE);
+});
+
+test("a v2 settlement is read from PAYMENT-RESPONSE, and Hedera's transactionId is understood", async () => {
+  let got = "";
+  const guarded = withZowall({
+    guard: guardFor(mandate()),
+    signPayment: async () => ({ payload: { transaction: "AAAA" } }),
+    onSettled: (s) => {
+      got = s.transactionId ?? "";
+    },
+    fetch: async (_i, init) =>
+      new Headers(init?.headers).get(PAYMENT_SIGNATURE_HEADER)
+        ? new Response("ok", {
+            status: 200,
+            headers: {
+              [PAYMENT_RESPONSE_HEADER]: encodeHeader({
+                success: true,
+                transactionId: "0.0.9185802@1700000000.000000001",
+                network: "hedera:testnet",
+                payer: "0.0.1001",
+              }),
+            },
+          })
+        : v2Required(hederaAccept),
+  });
+
+  await guarded(RESOURCE);
+  assert.equal(got, "0.0.9185802@1700000000.000000001");
+});
