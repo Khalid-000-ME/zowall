@@ -41,7 +41,7 @@ function nullifierFromProof(proof: unknown): string {
  */
 export async function verifyWorldProof(
   proof: unknown,
-  options: { rpId?: string; timeoutMs?: number; fetchImpl?: typeof fetch } = {},
+  options: { rpId?: string | undefined; timeoutMs?: number; fetchImpl?: typeof fetch } = {},
 ): Promise<WorldVerifyResult> {
   const rpId = options.rpId ?? process.env["WORLD_RP_ID"];
   if (!rpId) {

@@ -25,6 +25,9 @@
  * session proofs are unreachable, identity still comes from here.
  */
 
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+
 import type { Bytes32 } from "@zowall/gate-core";
 
 export const ENROLL_ACTION = "zowall-enroll";
@@ -102,6 +105,44 @@ export class MemoryEnrollmentStore implements EnrollmentStore {
 
   all(): Enrollment[] {
     return [...this.#byPerson.values()].sort((a, b) => a.enrolledAt - b.enrolledAt);
+  }
+}
+
+/**
+ * The registry, kept on disk.
+ *
+ * This matters more than it looks. World refuses a second uniqueness proof from
+ * the same person for the same action (`nullifier_replayed`), so a registry that
+ * forgets on restart leaves an enrolled person permanently unable to enrol again:
+ * their id is gone from memory and World will not issue another proof to recover
+ * it. Writing through to a file means a restart costs nothing.
+ *
+ * Only pseudonymous ids and a display label are stored: a nullifier says "the same
+ * person as last time" and nothing else. A missing or damaged file is treated as an
+ * empty registry rather than an error, so the app still starts.
+ */
+export class JsonFileEnrollmentStore extends MemoryEnrollmentStore {
+  readonly #path: string;
+
+  constructor(path: string) {
+    super();
+    this.#path = path;
+    try {
+      const saved = JSON.parse(readFileSync(path, "utf8")) as Enrollment[];
+      for (const e of saved) super.put(e);
+    } catch {
+      // nothing saved yet, or unreadable: start empty
+    }
+  }
+
+  override put(enrollment: Enrollment): void {
+    super.put(enrollment);
+    try {
+      mkdirSync(dirname(this.#path), { recursive: true });
+      writeFileSync(this.#path, JSON.stringify(this.all(), null, 2));
+    } catch {
+      // a read-only disk must not break enrolment; the entry stays in memory
+    }
   }
 }
 

@@ -1,7 +1,17 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { toPersonId, MemoryEnrollmentStore, SodError, assertDistinct } from "../src/registry.ts";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import {
+  JsonFileEnrollmentStore,
+  toPersonId,
+  MemoryEnrollmentStore,
+  SodError,
+  assertDistinct,
+} from "../src/registry.ts";
 import { actionFor, configuredMode, isFresh, newCheck } from "../src/freshness.ts";
 import { ROLE_CODE, roleFromCode } from "../src/roles.ts";
 import { verifyWorldProof } from "../src/verify.ts";
@@ -115,4 +125,50 @@ test("nullifier_replayed is reported as the integration working", async () => {
   // the nullifier is trustworthy here: World only reaches "already used"
   // after validating the proof cryptographically
   assert.equal(result.nullifier, "0xKNOWN");
+});
+
+test("an enrolment survives a restart, which World would not let us redo", () => {
+  const dir = mkdtempSync(join(tmpdir(), "zowall-enroll-"));
+  const file = join(dir, "enrollments.json");
+  try {
+    const first = new JsonFileEnrollmentStore(file);
+    first.put({ personId: A, address: "", label: "Priya", enrolledAt: 1, live: true });
+
+    // a new process: nothing in memory, only the file
+    const second = new JsonFileEnrollmentStore(file);
+    assert.equal(second.get(A)?.label, "Priya");
+    assert.equal(second.get(A)?.live, true);
+    assert.equal(second.all().length, 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a stand-in still cannot overwrite a real enrolment once it is persisted", () => {
+  const dir = mkdtempSync(join(tmpdir(), "zowall-enroll-"));
+  const file = join(dir, "enrollments.json");
+  try {
+    const first = new JsonFileEnrollmentStore(file);
+    first.put({ personId: A, address: "", label: "Priya", enrolledAt: 1, live: true });
+
+    const second = new JsonFileEnrollmentStore(file);
+    second.put({ personId: A, address: "", label: "Priya (fake)", enrolledAt: 2, live: false });
+    assert.equal(new JsonFileEnrollmentStore(file).get(A)?.label, "Priya");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a damaged registry file is an empty registry, not a crash", () => {
+  const dir = mkdtempSync(join(tmpdir(), "zowall-enroll-"));
+  const file = join(dir, "enrollments.json");
+  try {
+    writeFileSync(file, "{ this is not json");
+    const store = new JsonFileEnrollmentStore(file);
+    assert.equal(store.all().length, 0);
+    store.put({ personId: B, address: "", label: "Bob", enrolledAt: 1, live: true });
+    assert.equal(new JsonFileEnrollmentStore(file).get(B)?.label, "Bob");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
