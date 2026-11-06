@@ -20,6 +20,8 @@ import { privateKeyToAccount } from "viem/accounts";
 import { formatUsdt, type Bytes32 } from "@zowall/gate-core";
 import { ROLE_CODE, type Role } from "@zowall/world";
 
+import { GATE_ABI as SDK_ABI } from "@zowall/sdk";
+
 import { ERC20_ABI, GATE_ABI } from "./abi-v1.ts";
 import { explorerTx, transport, whitechainSepolia } from "./chain.ts";
 
@@ -33,7 +35,9 @@ const OLD = env("OLD_GATE") as `0x${string}`;
 const NEW = env("GATE_ADDRESS") as `0x${string}`;
 const USDT = env("USDT_ADDRESS") as `0x${string}`;
 const buyer = privateKeyToAccount(env("PRIVATE_KEY") as `0x${string}`);
-const attestor = privateKeyToAccount(env("ATTESTOR_PRIVATE_KEY") as `0x${string}`);
+// The old gate trusts ONE attestor. It is the key the v1 gate was deployed with,
+// kept as OLD_ATTESTOR_PRIVATE_KEY for exactly this recovery and nothing else.
+const attestor = privateKeyToAccount(env("OLD_ATTESTOR_PRIVATE_KEY") as `0x${string}`);
 
 const ALICE = `0x${"a1".repeat(32)}` as Bytes32;
 const BOB = `0x${"b2".repeat(32)}` as Bytes32;
@@ -99,17 +103,27 @@ line("");
 
 // Reservations block the drain, so release them first. Only the creator can.
 for (const po of (process.env["OPEN_POS"] ?? "").split(",").filter(Boolean).map(BigInt)) {
+  // Only the person who raised an order can cancel it, so sign as them. Their
+  // id is read from the order itself: it is a World ID nullifier for any order
+  // raised through the app, not the fixed stand-in the runner uses.
+  const raised = (await pub.readContract({
+    address: OLD,
+    abi: SDK_ABI,
+    functionName: "getPO",
+    args: [po],
+  })) as { creatorPersonId: Bytes32 };
+
   await tx(`cancelPO #${po}`, {
     address: OLD,
     abi: GATE_ABI,
     functionName: "cancelPO",
-    args: [po, await attest(ALICE, "Creator", po)],
+    args: [po, await attest(raised.creatorPersonId, "Creator", po)],
     chain: whitechainSepolia,
     account: buyer,
   });
 }
 
-const UNIT = 1_000_000n;
+const UNIT = BigInt(process.env["MIGRATE_UNIT"] ?? "1000000");
 const qty = (await free()) / UNIT;
 if (qty === 0n) {
   line("nothing recoverable in whole units");

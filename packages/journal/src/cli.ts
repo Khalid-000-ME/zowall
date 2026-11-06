@@ -4,7 +4,7 @@
  *
  *   journal replay <topicId>     pull every entry, recompute, report OK or a diff
  *   journal tail <topicId>       print the last entries, newest first
- *   journal create-topic         one-off setup; prints the topic id and submit key
+ *   journal create-topic [--gate <address>] [--chain <id>]         one-off setup; prints the topic id and submit key
  *
  * Replay needs no credentials. That is the point: an auditor runs this against
  * a public mirror node without asking us for anything.
@@ -17,7 +17,7 @@ import { formatReport, replay } from "./replay.ts";
 const USAGE = `usage:
   journal replay <topicId> [--gate <address>] [--rpc <url>] [--chain <id>] [--mirror <url>]
   journal tail <topicId> [--limit <n>]
-  journal create-topic
+  journal create-topic [--gate <address>] [--chain <id>]
 `;
 
 async function keccak(): Promise<(d: `0x${string}`) => `0x${string}`> {
@@ -105,8 +105,16 @@ async function main(): Promise<number> {
       return 1;
     }
 
+    const gate = flag(rest, "gate") ?? process.env["GATE_ADDRESS"];
+    if (!gate) {
+      process.stderr.write("pass --gate <address> (or set GATE_ADDRESS): the topic's memo names the gate it journals\n");
+      return 1;
+    }
+    const chainId = Number(flag(rest, "chain") ?? process.env["EVM_CHAIN_ID"] ?? 1874);
+
     const { createTopic } = await import("./hcs.ts");
-    const { topicId, submitKey } = await createTopic({ operatorId, operatorKey });
+    const { topicId, submitKey, memo } = await createTopic({ operatorId, operatorKey, gate, chainId });
+    process.stdout.write(`memo       ${memo}\n`);
 
     process.stdout.write(`topic      ${topicId}\n`);
     process.stdout.write(`submit key ${submitKey}\n`);

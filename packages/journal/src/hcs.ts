@@ -88,14 +88,51 @@ async function parseKey(value: string): Promise<import("@hashgraph/sdk").Private
  * change it but promise not to". The cost is that a mistake in the memo is
  * permanent, which is an acceptable trade for a journal.
  */
+/**
+ * The memo a journal topic carries. It is public and permanent, so it is how
+ * anyone, with no help from us, can check which gate a topic belongs to: a topic
+ * whose memo names a different gate is not this project's journal.
+ *
+ * Hedera limits a memo to 100 bytes.
+ */
+export function topicMemo(chainId: number, gate: string): string {
+  const memo = `zowall journal v2 chain=${chainId} gate=${gate.toLowerCase()}`;
+  if (new TextEncoder().encode(memo).length > 100) throw new Error("topic memo exceeds Hedera's 100 bytes");
+  return memo;
+}
+
+/**
+ * Create the journal topic with every protection Hedera offers for this job.
+ *
+ *  - SUBMIT KEY. Only the holder can append. A topic without one accepts
+ *    messages from anybody, which would let a stranger fill the journal with
+ *    noise. This is Hedera's access control for HCS, and it is the option that
+ *    matters here.
+ *  - NO ADMIN KEY. Nobody can change the topic's settings, swap the submit key
+ *    or delete it. History cannot be rewritten by an operator who has a change
+ *    of heart, or by anyone who steals the operator's account.
+ *  - AUTO-RENEW ACCOUNT. A topic has an expiry. Without an account named to pay
+ *    its renewal, an admin-less topic would simply run out. Naming one, at
+ *    creation, is the only chance: with no admin key it cannot be added later.
+ *  - MEMO naming the gate and chain, so the binding is on the ledger itself.
+ *
+ * Custom fees (HIP-991) are deliberately not set. They exist to charge
+ * strangers who are allowed to write; here strangers are not allowed to write at
+ * all, so a fee would guard a door that is already bricked up, while adding a
+ * second thing to keep correct.
+ */
 export async function createTopic(config: {
   operatorId: string;
   operatorKey: string;
   submitKey?: string;
   network?: HederaNetwork;
-  memo?: string;
-}): Promise<{ topicId: string; submitKey: string }> {
-  const { Client, PrivateKey, TopicCreateTransaction } = await sdk();
+  /** the gate this journal belongs to, recorded in the memo */
+  chainId: number;
+  gate: string;
+  /** seconds between renewals. Hedera's maximum is 8,000,001. */
+  autoRenewSeconds?: number;
+}): Promise<{ topicId: string; submitKey: string; memo: string }> {
+  const { Client, PrivateKey, TopicCreateTransaction, AccountId } = await sdk();
 
   const operatorKey = await parseKey(config.operatorKey);
   const client = (config.network === "mainnet" ? Client.forMainnet() : Client.forTestnet())
@@ -104,18 +141,21 @@ export async function createTopic(config: {
   const submitKey = config.submitKey
     ? await parseKey(config.submitKey)
     : PrivateKey.generateED25519();
+  const memo = topicMemo(config.chainId, config.gate);
 
   try {
     const tx = await new TopicCreateTransaction()
-      .setTopicMemo(config.memo ?? "zowall journal v1") // 100 bytes max
+      .setTopicMemo(memo)
       .setSubmitKey(submitKey.publicKey)
+      .setAutoRenewAccountId(AccountId.fromString(config.operatorId))
+      .setAutoRenewPeriod(config.autoRenewSeconds ?? 8_000_001)
       .execute(client);
 
     const receipt = await tx.getReceipt(client);
     const topicId = receipt.topicId;
     if (!topicId) throw new Error("topic create returned no topic id");
 
-    return { topicId: topicId.toString(), submitKey: submitKey.toString() };
+    return { topicId: topicId.toString(), submitKey: submitKey.toString(), memo };
   } finally {
     client.close();
   }
