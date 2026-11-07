@@ -35,23 +35,23 @@ export function Hero({ tagline, taglineTech }: { tagline: string; taglineTech: s
       </div>
 
       <div className="page hero-body">
-        <p className="hero-eyebrow">Three-way invoice match for agents that hold a wallet</p>
+        <p className="hero-eyebrow">Payments for x402 endpoints and the agents that pay them</p>
 
         <h1 className="hero-title">{tagline}</h1>
 
         <p className="hero-sub">{taglineTech}</p>
 
         <p className="hero-lede">
-          Finance never pays an invoice that does not match the purchase order and the goods
-          receipt. Your agents pay everything. This is the missing check, as a contract.
+          Sell an x402 endpoint, or pay one. Every payment is matched to an order a person
+          raised before it is signed.
         </p>
 
         <div className="hero-actions">
-          <Link href="/signup" className="hero-btn hero-btn-primary">
-            Get started
+          <Link href="/signup?role=vendor" className="hero-btn hero-btn-primary">
+            Start selling
           </Link>
-          <Link href="/docs" className="hero-btn hero-btn-ghost">
-            Read the docs
+          <Link href="/signup?role=buyer" className="hero-btn hero-btn-ghost">
+            Start buying
           </Link>
         </div>
 

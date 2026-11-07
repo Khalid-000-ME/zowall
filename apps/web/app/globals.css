@@ -668,3 +668,103 @@ a {
   width: 100%;
   height: auto;
 }
+
+/* ----------------------------------------------------------- sell and buy -- */
+
+.land-paths {
+  padding-block: var(--space-6) 0;
+}
+
+.land-paths-grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: 1fr;
+  max-width: 1040px;
+}
+
+@media (min-width: 720px) {
+  .land-paths-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.land-path {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card);
+  transition: border-color 200ms cubic-bezier(0.2, 0.7, 0.2, 1), transform 200ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.land-path:hover {
+  border-color: #3a4a6b;
+  transform: translateY(-2px);
+}
+
+.land-path h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+}
+
+.land-path p {
+  margin: 0;
+  color: var(--mute);
+  line-height: 1.55;
+}
+
+.land-path-link {
+  margin-top: auto;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: #3a4a6b;
+  transition: text-decoration-color 160ms ease-out;
+}
+
+.land-path-link:hover {
+  text-decoration-color: var(--ink);
+}
+
+/* ---------------------------------------------------- interaction states -- */
+
+.land a:focus-visible,
+.land button:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.hero-btn {
+  transition: transform 140ms cubic-bezier(0.2, 0.7, 0.2, 1), background-color 160ms ease-out,
+    border-color 160ms ease-out;
+}
+
+.hero-btn:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.land-card {
+  transition: transform 220ms cubic-bezier(0.2, 0.7, 0.2, 1), border-color 220ms ease-out;
+}
+
+.land-card:hover {
+  transform: translateY(-3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .land-path,
+  .land-card,
+  .hero-btn {
+    transition: none;
+  }
+  .land-path:hover,
+  .land-card:hover,
+  .hero-btn:active {
+    transform: none;
+  }
+}

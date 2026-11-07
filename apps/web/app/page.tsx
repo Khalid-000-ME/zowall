@@ -19,6 +19,21 @@ export default function Home() {
 
       <Hero tagline={TAGLINE} taglineTech={TAGLINE_TECH} />
 
+      <section className="land-paths">
+        <div className="page land-paths-grid">
+          <article className="land-path">
+            <h2>Sell</h2>
+            <p>Register an x402 endpoint. We call it, and it is listed only if its own 402 names your payee and your price.</p>
+            <Link href="/signup?role=vendor" className="land-path-link">Register an endpoint</Link>
+          </article>
+          <article className="land-path">
+            <h2>Buy</h2>
+            <p>Get an API key, find a verified endpoint and pay it with the SDK. A quote nobody ordered is never signed.</p>
+            <Link href="/signup?role=buyer" className="land-path-link">Create an API key</Link>
+          </article>
+        </div>
+      </section>
+
       <section className="land-shot">
         <div className="page">
           <h2 className="land-shot-title">A hosted checkout for your buyers.</h2>
