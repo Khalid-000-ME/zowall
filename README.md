@@ -610,6 +610,18 @@ Accounts, API keys, the registry and checkout sessions are kept in JSON files
 under `apps/web/.data`, which is fine for one server and not for a deployment
 that has no persistent disk.
 
+## Try the SDK: a merchant that bills through Zowall
+
+`apps/merchant-demo` is a small shop server built on `@zowall/sdk`. It finds an
+order that has been delivered and not yet billed, signs the invoice as the vendor,
+asks Zowall for a checkout session and redirects the buyer to the hosted page.
+
+```bash
+# 1. In the app: sign up as a vendor, copy the API key.
+# 2. In /lab/orders raise an order, then sign for its delivery as someone else.
+ZOWALL_API_KEY=sk_live_... pnpm --filter merchant-demo start     # http://localhost:4000
+```
+
 ## Layout
 
 ```
@@ -624,6 +636,7 @@ packages/
   e2e/           live runner and single-decision verifier
 apps/
   web/           Next.js 16: accounts, registry, docs, checkout, lab, API
+  merchant-demo/ a shop server that bills through the hosted checkout, using the SDK
 docs/
   architecture.svg   the hero diagram, logos inlined
   SETUP.md           credentials and configuration

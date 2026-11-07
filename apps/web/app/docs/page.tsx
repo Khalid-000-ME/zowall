@@ -218,6 +218,11 @@ export default function Docs() {
           Three things must match what you registered: <code>payTo</code>, <code>amount</code> and the resource URL.
           The network must offer the <code>exact</code> scheme.
         </P>
+        <P>
+          Price in HBAR or USDC on Hedera (<code>hedera:testnet</code>, payee <code>0.0.x</code>), or in USDT on
+          Whitechain (<code>eip155:1874</code>, asset <code>0xcedfB561&hellip;5a7</code>, payee an EVM address). No
+          endpoint of your own yet? The registration form has a button that fills in a working sample for each asset.
+        </P>
       </Step>
 
       <Step id="sell-checkout" eyebrow="Sell" title="Hosted checkout">
@@ -227,6 +232,10 @@ export default function Docs() {
           funds.
         </P>
         <CodeBlock code={CHECKOUT} />
+        <P>
+          A complete merchant server is in <code>apps/merchant-demo</code>: a shop page, a Pay button that creates the
+          session, and the redirect. It is about 130 lines.
+        </P>
       </Step>
 
       {/* --------------------------------------------------------------------- buy -- */}

@@ -15,6 +15,15 @@ importers:
         specifier: 5.9.2
         version: 5.9.2
 
+  apps/merchant-demo:
+    dependencies:
+      '@zowall/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
+      viem:
+        specifier: 2.21.55
+        version: 2.21.55(typescript@5.9.2)
+
   apps/web:
     dependencies:
       '@hashgraph/sdk':

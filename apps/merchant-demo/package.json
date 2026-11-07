@@ -1,0 +1,15 @@
+{
+  "name": "merchant-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A small merchant server that bills through Zowall's hosted checkout, using @zowall/sdk.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file=../../.env.local server.ts"
+  },
+  "dependencies": {
+    "@zowall/sdk": "workspace:*",
+    "viem": "2.21.55"
+  }
+}
