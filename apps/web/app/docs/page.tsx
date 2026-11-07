@@ -247,6 +247,15 @@ export default function Docs() {
         <CodeBlock code={DISCOVER} />
       </Step>
 
+      <Step id="buy-people" eyebrow="Buy" title="Verify the people on an order">
+        <P>
+          An order has a creator, a receiver and an approver, and the gate refuses to let one person hold two of
+          those roles. Each person verifies once with World ID under <Link href="/app/people">People</Link>. Their
+          verified identity is what the gate compares, so the SDK never handles World proofs: you pass the
+          attestation, the contract checks it.
+        </P>
+      </Step>
+
       <Step id="buy-pay" eyebrow="Buy" title="Pay with x402">
         <P>
           Wrap your agent&rsquo;s <code>fetch</code>. Each 402 is matched against a mandate you set, so an agent can

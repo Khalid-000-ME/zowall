@@ -17,10 +17,12 @@ export function AppNav({ role, name, email }: { role: "vendor" | "buyer"; name: 
           { href: "/app", label: "Overview" },
           { href: "/app/endpoints", label: "Endpoints" },
           { href: "/app/keys", label: "API keys" },
+          { href: "/app/people", label: "People" },
         ]
       : [
           { href: "/app", label: "Overview" },
           { href: "/app/keys", label: "API keys" },
+          { href: "/app/people", label: "People" },
         ];
 
   const more: Item[] = [
