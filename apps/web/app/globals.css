@@ -334,14 +334,16 @@ a {
   font-size: clamp(2.4rem, 6.2vw, 4.8rem);
   line-height: 1.08;
   letter-spacing: -0.01em;
-  max-width: 16ch;
+  max-width: 14ch;
 }
 
 .hero-sub {
   font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
   font-size: clamp(1.1rem, 2.6vw, 1.6rem);
   color: var(--mute);
-  margin: 0 0 var(--space-4);
+  margin: 0 auto var(--space-4);
+  max-width: 34ch;
+  text-wrap: balance;
 }
 
 .hero-lede {

@@ -46,9 +46,9 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Zowall - No PO, no pay",
+  title: "Zowall - Agents never get scammed",
   description:
-    "Three-way invoice match for agents that hold a wallet. USDT on Whitechain, refusals on Hedera HCS.",
+    "Institutional paywall for x402, using HCS and World ID on Whitechain. Agents can only pay what a person ordered.",
   icons: { icon: "/favicon.svg" },
 };
 

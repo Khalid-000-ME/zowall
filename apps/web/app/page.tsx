@@ -9,8 +9,8 @@ import { SiteNav } from "@/components/SiteNav";
  * One tagline, carried identically by the hero, the metadata and the README.
  * If this line changes, all three change together.
  */
-const TAGLINE = "No PO, no pay.";
-const TAGLINE_TECH = "USDT on Whitechain, refusals on Hedera HCS.";
+const TAGLINE = "Agents never get scammed.";
+const TAGLINE_TECH = "Institutional paywall for x402, using HCS and World ID on Whitechain.";
 
 export default function Home() {
   return (

@@ -87,10 +87,12 @@ export function LandingStory() {
     <>
       <section className="land-section land-split">
         <Reveal>
-          <h2 className="land-h2">Your agent has a wallet and no accounts payable.</h2>
+          <h2 className="land-h2">Stablecoins scale when agents pay.</h2>
           <p className="land-lede">
-            A spend cap checks the amount. An allowlist checks the counterparty. None of them check
-            whether the thing was ever ordered, or ever arrived.
+            Institutions come on chain through stablecoins, and the volume comes from software
+            paying software. That is only safe if the software cannot be talked into a bad
+            payment. A spend cap checks the amount and an allowlist checks the counterparty.
+            Neither checks whether the thing was ever ordered.
           </p>
         </Reveal>
         <Reveal className="land-art" delay={120}>

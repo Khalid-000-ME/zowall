@@ -42,8 +42,8 @@ export function Hero({ tagline, taglineTech }: { tagline: string; taglineTech: s
         <p className="hero-sub">{taglineTech}</p>
 
         <p className="hero-lede">
-          Sell an x402 endpoint, or pay one. Every payment is matched to an order a person
-          raised before it is signed.
+          Finance never pays a quote nobody ordered. Zowall puts the purchase order, the receipt and
+          the invoice on chain, so an agent can only pay what a person ordered.
         </p>
 
         <div className="hero-actions">
