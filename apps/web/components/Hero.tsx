@@ -35,8 +35,6 @@ export function Hero({ tagline, taglineTech }: { tagline: string; taglineTech: s
       </div>
 
       <div className="page hero-body">
-        <p className="hero-eyebrow">Payments for x402 endpoints and the agents that pay them</p>
-
         <h1 className="hero-title">{tagline}</h1>
 
         <p className="hero-sub">{taglineTech}</p>
