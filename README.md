@@ -5,8 +5,8 @@
 <h1 align="center">Zowall</h1>
 
 <p align="center">
-  <strong>No PO, no pay.</strong><br>
-  USDT on Whitechain, refusals on Hedera HCS.
+  <strong>Agents never get scammed.</strong><br>
+  Institutional paywall for x402, using HCS and World ID on Whitechain.
 </p>
 
 ## What it is
