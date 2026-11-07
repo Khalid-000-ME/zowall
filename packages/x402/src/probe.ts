@@ -187,14 +187,17 @@ export async function probeEndpoint(expected: ProbeExpectation): Promise<ProbeRe
     version: quote.x402Version,
   };
 
+  // EVM addresses are the same account in any letter case; Hedera ids have no case.
+  const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+
   const reasons: string[] = [];
-  if (wanted.payTo !== expected.payTo) {
+  if (!same(wanted.payTo, expected.payTo)) {
     reasons.push(`the endpoint's own quote pays ${wanted.payTo}, not ${expected.payTo}. You can only register an endpoint that pays an account you name`);
   }
   if (wanted.amount !== expected.amount) {
     reasons.push(`the endpoint quotes ${wanted.amount}, not ${expected.amount}`);
   }
-  if ((wanted.asset || "0.0.0") !== (expected.asset || "0.0.0")) {
+  if (!same(wanted.asset || "0.0.0", expected.asset || "0.0.0")) {
     reasons.push(`the endpoint is priced in ${wanted.asset}, not ${expected.asset}`);
   }
   if (wanted.resource && normaliseResource(wanted.resource) !== normaliseResource(expected.url)) {

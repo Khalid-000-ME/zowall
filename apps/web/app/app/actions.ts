@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { AccountError, createKey, revokeKey } from "@/lib/accounts";
-import { toAtomic } from "@/lib/amounts";
+import { assetOf, toAtomic } from "@/lib/amounts";
 import { RegistryError, canManage, getEndpoint, registerEndpoint, removeEndpoint, reverify } from "@/lib/registry";
 import { requireAccount } from "@/lib/session";
 
@@ -16,14 +16,16 @@ const msg = (e: unknown) =>
 export async function registerEndpointAction(_prev: EndpointState, form: FormData): Promise<EndpointState> {
   const account = await requireAccount("vendor");
   try {
-    const asset = String(form.get("asset") ?? "0.0.0");
+    const chosen = assetOf(String(form.get("asset") ?? "0.0.0"));
+    if (!chosen) throw new Error("Choose a supported asset.");
+    const asset = chosen.id;
     const endpoint = await registerEndpoint(account.id, {
       name: String(form.get("name") ?? ""),
       description: String(form.get("description") ?? ""),
       url: String(form.get("url") ?? ""),
       payTo: String(form.get("payTo") ?? ""),
       asset,
-      network: "hedera:testnet",
+      network: chosen.network,
       amount: toAtomic(asset, String(form.get("price") ?? "")),
       tags: String(form.get("tags") ?? "").split(","),
       visibility: form.get("visibility") === "private" ? "private" : "public",

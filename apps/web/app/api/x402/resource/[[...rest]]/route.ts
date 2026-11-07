@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { privateKeyToAccount } from "viem/accounts";
 
 import {
   PAYMENT_REQUIRED_HEADER,
@@ -8,6 +9,7 @@ import {
   encodeHeader,
 } from "@zowall/x402";
 
+import { USDT_WHITECHAIN } from "@/lib/amounts";
 import { NETWORK, feePayer, settle, verify } from "@/lib/x402-facilitator";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +32,26 @@ export const maxDuration = 60;
  */
 const DEFAULT_PRICE = "10000";
 
+/** The same resource priced in USDT on Whitechain, at /api/x402/resource/usdt. */
+const isUsdt = (url: URL) => url.pathname.replace(/\/+$/, "").endsWith("/usdt");
+
+function usdtPayee(): string {
+  const key = process.env["VENDOR_PRIVATE_KEY"];
+  return key ? privateKeyToAccount(key as `0x${string}`).address : "";
+}
+
 async function requirements(url: URL) {
+  if (isUsdt(url)) {
+    return {
+      scheme: "exact",
+      network: "eip155:1874",
+      amount: url.searchParams.get("price") ?? "100000",
+      asset: USDT_WHITECHAIN,
+      payTo: url.searchParams.get("payTo") ?? usdtPayee(),
+      maxTimeoutSeconds: 60,
+      extra: {},
+    };
+  }
   return {
     scheme: "exact",
     network: NETWORK,
@@ -73,6 +94,15 @@ async function handle(request: Request) {
         [PAYMENT_REQUIRED_HEADER]: encodeHeader(required),
       },
     });
+  }
+
+  if (isUsdt(url)) {
+    // Quoting is real; settling a Whitechain USDT payment is done through the gate
+    // with a signed invoice, not by this Hedera facilitator.
+    return NextResponse.json(
+      { error: "this sample quotes USDT on Whitechain and does not settle x402 payments on that network" },
+      { status: 501 },
+    );
   }
 
   const payload = decodeHeader<{ payload?: unknown }>(header);

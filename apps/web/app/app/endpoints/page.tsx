@@ -1,10 +1,12 @@
+import { headers } from "next/headers";
 import Link from "next/link";
 
-import { EndpointForm } from "@/components/account/EndpointForm";
+import { EndpointForm, type Samples } from "@/components/account/EndpointForm";
 import { EndpointRowActions } from "@/components/account/EndpointRowActions";
-import { ago, formatPrice } from "@/lib/amounts";
+import { USDT_WHITECHAIN, ago, formatPrice } from "@/lib/amounts";
 import { endpointsOf } from "@/lib/registry";
 import { requireAccount } from "@/lib/session";
+import { privateKeyToAccount } from "viem/accounts";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +22,26 @@ export default async function Endpoints() {
   const account = await requireAccount("vendor");
   const endpoints = endpointsOf(account.id);
 
+  // A working endpoint on this very site for each asset, so a first registration
+  // does not depend on having written an x402 server yet.
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const origin = `${proto}://${host}`;
+  const vendorKey = process.env["VENDOR_PRIVATE_KEY"];
+  const samples: Samples = {
+    "0.0.0": process.env["X402_PAY_TO"]
+      ? { url: `${origin}/api/x402/resource`, payTo: process.env["X402_PAY_TO"], price: "0.0001" }
+      : undefined,
+    [USDT_WHITECHAIN]: vendorKey
+      ? {
+          url: `${origin}/api/x402/resource/usdt`,
+          payTo: privateKeyToAccount(vendorKey as `0x${string}`).address,
+          price: "0.10",
+        }
+      : undefined,
+  };
+
   return (
     <>
       <header>
@@ -32,7 +54,7 @@ export default async function Endpoints() {
       </header>
 
       <section className="ui-section">
-        <EndpointForm />
+        <EndpointForm samples={samples} />
       </section>
 
       <section className="ui-section">

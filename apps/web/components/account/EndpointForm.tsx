@@ -1,8 +1,13 @@
 "use client";
 
-import { useActionState, useRef } from "react";
+import { useActionState, useRef, useState } from "react";
 
 import { registerEndpointAction, type EndpointState } from "@/app/app/actions";
+import { ASSETS, assetOf } from "@/lib/amounts";
+
+/** A working endpoint on this site for each asset, to register without writing one first. */
+export type Sample = { url: string; payTo: string; price: string };
+export type Samples = Record<string, Sample | undefined>;
 
 const input: React.CSSProperties = {
   padding: "10px 12px",
@@ -29,9 +34,15 @@ function Field({ label, children, hint }: { label: string; children: React.React
  * Register an endpoint. It is saved either way, and verified only if the endpoint's
  * own 402 matches what is entered here: the same payee, the same price.
  */
-export function EndpointForm() {
+export function EndpointForm({ samples }: { samples: Samples }) {
   const [state, action, pending] = useActionState<EndpointState, FormData>(registerEndpointAction, {});
   const formRef = useRef<HTMLFormElement>(null);
+  const [asset, setAsset] = useState<string>(ASSETS[0].id);
+  const [fields, setFields] = useState({ name: "", url: "", price: "", payTo: "" });
+  const chosen = assetOf(asset) ?? ASSETS[0];
+  const sample = samples[chosen.id];
+  const set = (k: keyof typeof fields) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setFields((f) => ({ ...f, [k]: e.target.value }));
 
   return (
     <form
@@ -49,28 +60,49 @@ export function EndpointForm() {
       </div>
 
       <Field label="Name">
-        <input name="name" placeholder="Weather forecast" maxLength={80} required style={input} />
+        <input name="name" placeholder="Weather forecast" maxLength={80} required style={input} value={fields.name} onChange={set("name")} />
       </Field>
 
       <Field label="Endpoint URL" hint="The URL that answers 402 Payment Required.">
-        <input name="url" type="url" placeholder="https://api.example.com/forecast" required style={input} />
+        <input name="url" type="url" placeholder="https://api.example.com/forecast" required style={input} value={fields.url} onChange={set("url")} />
       </Field>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-3)" }}>
         <Field label="Price per call">
-          <input name="price" inputMode="decimal" placeholder="0.0001" required style={input} />
+          <input name="price" inputMode="decimal" placeholder={chosen.symbol === "HBAR" ? "0.0001" : "0.10"} required style={input} value={fields.price} onChange={set("price")} />
         </Field>
         <Field label="Asset">
-          <select name="asset" defaultValue="0.0.0" style={input}>
-            <option value="0.0.0">HBAR</option>
-            <option value="0.0.429274">USDC</option>
+          <select name="asset" value={asset} onChange={(e) => setAsset(e.target.value)} style={input}>
+            {ASSETS.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.symbol}
+                {a.network.startsWith("eip155") ? " (Whitechain)" : " (Hedera)"}
+              </option>
+            ))}
           </select>
         </Field>
       </div>
 
-      <Field label="Paid to" hint="The Hedera account the endpoint's quote pays, such as 0.0.1234.">
-        <input name="payTo" placeholder="0.0.1234" required style={input} />
+      <Field label="Paid to" hint={`The ${chosen.payee} the endpoint's quote pays, such as ${chosen.example}.`}>
+        <input name="payTo" placeholder={chosen.example} required style={input} value={fields.payTo} onChange={set("payTo")} />
       </Field>
+
+      {sample ? (
+        <div>
+          <button
+            type="button"
+            className="ui-btn"
+            onClick={() =>
+              setFields((f) => ({ name: f.name || `Sample ${chosen.symbol} endpoint`, url: sample.url, price: sample.price, payTo: sample.payTo }))
+            }
+          >
+            Fill in a sample {chosen.symbol} endpoint
+          </button>
+          <span className="ui-faint" style={{ fontSize: 12.5, marginLeft: 10 }}>
+            Runs on this site, so it verifies.
+          </span>
+        </div>
+      ) : null}
 
       <Field label="Description">
         <textarea name="description" rows={2} maxLength={280} placeholder="What a call returns" style={{ ...input, resize: "vertical" }} />

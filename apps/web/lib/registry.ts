@@ -154,7 +154,10 @@ export async function registerEndpoint(merchantId: string, input: EndpointInput)
 
   const v = normaliseInput(input);
   const db = load();
-  if (Object.values(db.endpoints).some((e) => e.url === v.url && e.network === v.network)) {
+  // A URL can be held by one vendor. Only a verified entry, or your own, blocks you:
+  // an unverified one proves nothing, so it must not lock the real owner out.
+  const held = Object.values(db.endpoints).filter((e) => e.url === v.url && e.network === v.network);
+  if (held.some((e) => e.status === "verified" || e.merchantId === merchantId)) {
     throw new RegistryError("That endpoint is already registered.", 409);
   }
 
@@ -172,6 +175,11 @@ export async function registerEndpoint(merchantId: string, input: EndpointInput)
   };
 
   const fresh = load();
+  // The endpoint answered as this vendor said it would, so stale unverified claims
+  // to the same URL from other accounts are dropped.
+  if (endpoint.status === "verified") {
+    for (const e of held) delete fresh.endpoints[e.id];
+  }
   fresh.endpoints[endpoint.id] = endpoint;
   save(fresh);
   return endpoint;

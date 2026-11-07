@@ -70,6 +70,27 @@ test("an endpoint whose own 402 matches the registration verifies", async () => 
   assert.equal(r.quote?.version, 2);
 });
 
+test("a USDT quote on Whitechain verifies, and an EVM address matches in any letter case", async () => {
+  const USDT = "0xcedfB56113143d55b2358b8CFbB0dEB5Ad2f55a7";
+  const PAYEE_EVM = "0xA957e1D8ce0498A73b5AFC1b2f8CA0cB6678C127";
+  const { server, base } = await serve(() =>
+    v2(`http://127.0.0.1:${(server.address() as AddressInfo).port}`, {
+      network: "eip155:1874",
+      asset: USDT.toLowerCase(),
+      payTo: PAYEE_EVM.toLowerCase(),
+      amount: "100000",
+      extra: {},
+    }),
+  );
+  const ok = await probeEndpoint(expected(base, { network: "eip155:1874", asset: USDT, payTo: PAYEE_EVM, amount: "100000" }));
+  const wrong = await probeEndpoint(
+    expected(base, { network: "eip155:1874", asset: USDT, payTo: "0x0000000000000000000000000000000000000001", amount: "100000" }),
+  );
+  server.close();
+  assert.equal(ok.ok, true, ok.reasons.join("; "));
+  assert.equal(wrong.ok, false);
+});
+
 test("registering someone else's URL against your own account fails, because their 402 names theirs", async () => {
   const { server, base } = await serve(() => v2(`http://127.0.0.1:${(server.address() as AddressInfo).port}`));
   const r = await probeEndpoint(expected(base, { payTo: "0.0.6666" }));
