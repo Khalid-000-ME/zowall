@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { Hero } from "@/components/Hero";
@@ -17,6 +18,23 @@ export default function Home() {
       <SiteNav overDark />
 
       <Hero tagline={TAGLINE} taglineTech={TAGLINE_TECH} />
+
+      <section className="land-shot">
+        <div className="page">
+          <h2 className="land-shot-title">A hosted checkout for your buyers.</h2>
+          <p className="land-shot-sub">Send a buyer to a page like this. Zowall checks the invoice and settles it.</p>
+          <div className="land-shot-frame">
+            <Image
+              src="/checkout-paid.png"
+              alt="The Zowall hosted checkout after a payment: 0.10 USDT sent in a single transaction, with a link to the transaction."
+              width={2560}
+              height={1600}
+              sizes="(min-width: 1100px) 1040px, 92vw"
+              priority={false}
+            />
+          </div>
+        </div>
+      </section>
 
       <LandingStory />
 
