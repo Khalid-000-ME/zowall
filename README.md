@@ -11,16 +11,27 @@
 
 ## What it is
 
-Zowall is a three-way invoice match for AI agents that hold a wallet. A purchase
-order, a goods receipt and an invoice have to agree before money moves, and the
-three people involved have to be three different humans.
+Zowall is a payments platform for x402 endpoints and the agents that pay them,
+the way Stripe and Razorpay are for cards. Vendors register the paid endpoints
+they sell and are verified before they are listed. Buyers get an API key,
+discover what they can pay for, and pay through a guard. Under it is a
+three-way invoice match: a purchase order, a goods receipt and an invoice have
+to agree before money moves, and the three people involved have to be three
+different humans.
 
 The language model never decides whether money moves. It parses documents and
 proposes. A deterministic contract disposes, and every decision is written
 somewhere the buyer cannot edit it.
 
-It runs as a drop-in SDK for agents that pay vendors, and as a middleware that
-wraps an agent's x402 payments so a machine payment faces the same checks.
+It runs as a drop-in SDK for agents that pay vendors, as a middleware that wraps
+an agent's x402 payments so a machine payment faces the same checks, and as a
+hosted checkout page for billing an invoice.
+
+| For | You get |
+|---|---|
+| Vendors | Register an x402 endpoint. The platform calls it, and its own 402 must name the payee and price you registered, or it is not listed. |
+| Buyers | Sign up, create an API key, discover verified endpoints, and pay through the guard with the SDK. |
+| Billing | Send a buyer to a hosted checkout for a vendor-signed invoice. |
 
 ## Proof it runs
 
@@ -90,7 +101,7 @@ set -a; source .env.local; set +a
 node packages/e2e/src/flow.ts --refund --cleanup
 ```
 
-In the running app, `/app/proofs` shows the same items read live: the topic's
+In the running app, `/lab/proofs` shows the same items read live: the topic's
 keys and memo from the public mirror node, the payer's key structure decoded from
 the ledger, the attestor quorum read from the gate, and the code behind each.
 
@@ -100,7 +111,7 @@ the ledger, the attestor quorum read from the gate, and the code behind each.
 |---|---|---|---|
 | <img src="apps/web/public/brands/whitechain.png" alt="Whitechain" height="20"> | A real USDT vault. Orders encumber a balance, a matched invoice pays from it in one transaction. | [`ZowallGate.sol`](packages/contracts/src/ZowallGate.sol), [`MatchEngine.sol`](packages/contracts/src/MatchEngine.sol) | [Gate on the explorer](https://explorer.testnet.whitechain.io/address/0x8ec88c90d675594ab969ed1180f8b887dfac1c71), [a PAID transaction](https://explorer.testnet.whitechain.io/tx/0xfb948aec6614e096e45bbc150f5c7d3c8691f574da667bb6865959452e85f3d6) |
 | <img src="apps/web/public/brands/hedera.svg" alt="Hedera" height="22"> | A hardened HCS topic as the audit journal, a replay that checks the ledger record, x402 v2 payments settled by a facilitator, and a threshold-key payer the middleware cannot be skipped around. | [`hcs.ts`](packages/journal/src/hcs.ts), [`replay.ts`](packages/journal/src/replay.ts), [`hedera.ts`](packages/x402/src/hedera.ts) | [Topic on HashScan](https://hashscan.io/testnet/topic/0.0.11339027), [payer account](https://hashscan.io/testnet/account/0.0.11338871), `journal replay` |
-| <img src="apps/web/public/brands/world.svg" alt="World" height="20"> | A uniqueness proof per person, validated on the server, compared on-chain. | [`verify/route.ts`](apps/web/app/api/world/verify/route.ts), [`verify.ts`](packages/world/src/verify.ts), [`ZowallGate.sol`](packages/contracts/src/ZowallGate.sol) | `/enroll`, `/app/proofs`, the `SodViolation` reverts |
+| <img src="apps/web/public/brands/world.svg" alt="World" height="20"> | A uniqueness proof per person, validated on the server, compared on-chain. | [`verify/route.ts`](apps/web/app/api/world/verify/route.ts), [`verify.ts`](packages/world/src/verify.ts), [`ZowallGate.sol`](packages/contracts/src/ZowallGate.sol) | `/enroll`, `/lab/proofs`, the `SodViolation` reverts |
 
 Details, with file and line ranges, are in each sponsor's section below:
 [Whitechain](#whitechain), [Hedera](#hedera), [World](#world).
@@ -223,7 +234,7 @@ flowchart LR
   subgraph HD["Hedera"]
     T["HCS topic"]
   end
-  E -->|personId| ATT["Attestor signs role + personId"]
+  E -->|personId| ATT["2 of 3 attestors sign role, personId and the exact action"]
   S -->|fresh| ATT
   ATT -->|EIP-712 attestation| G
   G --> D
@@ -293,6 +304,52 @@ sequenceDiagram
   FA->>HD: submit. Payer key = agent AND 2-of-3 guardians
   FA-->>RS: transaction id
   RS-->>AG: 200, PAYMENT-RESPONSE
+```
+
+### Onboarding an endpoint
+
+A vendor can only list an endpoint that pays an account they named. The platform
+proves it by calling the endpoint, so the registry cannot hold URLs their owners
+never agreed to list.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant V as Vendor
+  participant P as Zowall registry
+  participant E as x402 endpoint
+  participant B as Buyer's agent
+  V->>P: register(url, payTo, price, asset)
+  P->>E: GET url, no payment (private addresses, redirects and slow replies refused)
+  E-->>P: 402 with its own payTo, amount, asset, resource
+  Note over P: all four must match the registration.<br/>Otherwise the endpoint is stored as failing, with the reason.
+  P-->>V: verified and listed, or exactly what to fix
+  B->>P: discoverEndpoints() with an API key
+  P-->>B: verified, public endpoints only
+```
+
+### Hosted checkout
+
+A vendor signs an invoice and asks for a session. The buyer is sent to a page
+that shows the checks and pays. The vendor's signature is what authorises the
+payment, so the relay that submits it cannot change it.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant M as Vendor server
+  participant P as Zowall
+  participant U as Buyer
+  participant G as ZowallGate (Whitechain)
+  M->>P: createCheckoutSession(invoice, signature), vendor API key
+  P-->>M: checkout URL
+  M->>U: redirect
+  U->>P: open the checkout
+  P->>G: read the order and run the checks
+  P-->>U: the checks, each passing or refused with its code
+  U->>P: Pay
+  P->>G: submitInvoice(invoice, signature)
+  G-->>U: PAID with the transaction, or REJECTED with every reason
 ```
 
 ## How it works
@@ -458,7 +515,7 @@ settles.
 | Is a quote already decided | `DUPLICATE_INVOICE` |
 | Spends past the authorised call count | `QTY_OVER_RECEIVED` |
 
-In the running app, `/app/metered` runs each of these against a live 402, plus a
+In the running app, `/lab/metered` runs each of these against a live 402, plus a
 bypass scenario in which the agent skips the guard and the facilitator refuses.
 A refused quote never reaches the wallet. The honest scenario settles real testnet
 HBAR through the official facilitator and returns a transaction id you can open on
@@ -477,7 +534,7 @@ misbehaving.
 - The journal never blocks a payment.
 - Mirror reads retry on 429 and 5xx, honour `Retry-After`, never retry a 404, and
   fall through to other mirrors from the start of the topic.
-- 37 middleware and guardian tests, most of them attacks: an unauthorised
+- 52 x402 tests (middleware, guardians, the facilitator path and the registry probe), most of them attacks: an unauthorised
   endpoint, a payee swapped at quote time, a price raised after the fact, a replay,
   an exhausted allowance, a transaction that pays someone else, a middleware that
   lies to the guardians.
@@ -526,24 +583,32 @@ cp .env.example .env.local     # fill it in; see docs/SETUP.md
 pnpm dev
 ```
 
-The workspace is the product; the explainer is a guided tour of it.
+The product is accounts, an endpoint registry, API keys and a docs page for the
+SDK. The lab is the original workspace, kept for exploring how the checks work.
 
 | Page | What it is |
 |---|---|
 | `/` | The landing page |
-| `/app` | Workspace overview: vault, decisions, exceptions, people |
-| `/app/start` | Setup in four tabs: people, vault, agent, rules |
-| `/app/orders`, `/app/exceptions` | Raise an order and sign for a delivery; the queue a third person works |
-| `/app/agents`, `/app/metered` | The agent call log, and the x402 middleware against a live 402 |
-| `/app/proofs` | Every claim above, read live, with the code behind it |
-| `/docs` | Step-by-step docs: the SDK, the x402 middleware, and the reference |
+| `/signup`, `/login` | Create a vendor or buyer account. The first API key is shown once. |
+| `/app` | Your overview: keys, endpoints |
+| `/app/endpoints` | Vendors: register an x402 endpoint, see why it did or did not verify |
+| `/app/keys` | Create and revoke API keys for the SDK |
+| `/registry`, `/registry/[id]` | The catalogue of verified endpoints, for buyers |
+| `/docs` | Selling, buying and the reference, all in terms of the SDK |
+| `/checkout/[id]` | The hosted checkout a buyer is sent to |
+| `/lab/start`, `/lab/orders`, `/lab/exceptions` | Setup, raise an order, sign for a delivery, the queue a third person works |
+| `/lab/agents`, `/lab/metered` | The agent call log, and the x402 middleware against a live 402 |
+| `/lab/proofs` | Every claim above, read live, with the code behind it |
 | `/enroll` | Verify a person with World ID |
 | `/walkthrough` | Eleven steps against the real gate |
 | `/attack` | Type anything a finance team might receive; a gullible agent acts on it |
 | `/journal` | The Hedera journal read from a public mirror node |
 | `/vendor/[poId]` | What the vendor sees: what is reserved for them and where their invoice stands |
 
-Every page reads the chain and the Hedera topic directly. There is no database.
+The lab, journal and vendor pages read the chain and the Hedera topic directly.
+Accounts, API keys, the registry and checkout sessions are kept in JSON files
+under `apps/web/.data`, which is fine for one server and not for a deployment
+that has no persistent disk.
 
 ## Layout
 
@@ -553,12 +618,12 @@ packages/
   contracts/     ZowallGate.sol + MatchEngine.sol (Foundry)
   journal/       Hedera HCS writer, mirror reader, replay CLI
   world/         World ID enrolment, freshness, EIP-712 attestations
-  sdk/           the drop-in: gate.pay(invoice, sig)
+  sdk/           the drop-in: gate.pay, registry client, hosted checkout
   x402/          middleware that gates an agent's x402 payments
   agent/         a deliberately gullible buyer agent
   e2e/           live runner and single-decision verifier
 apps/
-  web/           Next.js 16: workspace, explainer, vendor portal, API
+  web/           Next.js 16: accounts, registry, docs, checkout, lab, API
 docs/
   architecture.svg   the hero diagram, logos inlined
   SETUP.md           credentials and configuration
@@ -584,10 +649,12 @@ pnpm dev                       # the web app
 |---|---|
 | `gate-core` | 45 |
 | `contracts` (Foundry) | 45 |
-| `x402` | 37 |
+| `x402` | 52 |
 | `world` | 19 |
 | `journal` | 25 |
-| `sdk` | 4 |
+| `sdk` | 12 |
+
+198 in all: 45 Foundry and 153 TypeScript.
 
 ## What's next
 
