@@ -30,7 +30,7 @@ hosted checkout page for billing an invoice.
 | For | You get |
 |---|---|
 | Vendors | Register an x402 endpoint. The platform calls it, and its own 402 must name the payee and price you registered, or it is not listed. |
-| Buyers | Sign up, create an API key, discover verified endpoints, and pay through the guard with the SDK. |
+| Buyers | Sign up with World ID, create an API key, discover verified endpoints, and pay through the guard with the SDK. |
 | Billing | Send a buyer to a hosted checkout for a vendor-signed invoice. |
 
 ## Proof it runs
@@ -589,10 +589,11 @@ SDK. The lab is the original workspace, kept for exploring how the checks work.
 | Page | What it is |
 |---|---|
 | `/` | The landing page |
-| `/signup`, `/login` | Create a vendor or buyer account. The first API key is shown once. |
+| `/signup`, `/login` | Sign up or sign in with World ID: one person, one account, no password. The first API key is shown once. |
 | `/app` | Your overview: keys, endpoints |
 | `/app/endpoints` | Vendors: register an x402 endpoint, see why it did or did not verify |
 | `/app/keys` | Create and revoke API keys for the SDK |
+| `/app/people` | Verify the people who act on orders, with World ID |
 | `/registry`, `/registry/[id]` | The catalogue of verified endpoints, for buyers |
 | `/docs` | Selling, buying and the reference, all in terms of the SDK |
 | `/checkout/[id]` | The hosted checkout a buyer is sent to |

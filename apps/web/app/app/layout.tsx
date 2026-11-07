@@ -17,7 +17,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="ui ui-shell">
-      <AppNav role={account.role} name={account.name} email={account.email} />
+      <AppNav role={account.role} name={account.name} email={account.email ?? "World ID"} />
       <main className="ui-main">
         <div className="ui-main-inner">{children}</div>
       </main>

@@ -51,7 +51,10 @@ export async function verifyWorldProof(
   const doFetch = options.fetchImpl ?? fetch;
 
   try {
-    const res = await doFetch(`https://developer.world.org/api/v4/verify/${rpId}`, {
+    // The base can be pointed at a stand-in for World, which is how the sign-in flow is
+    // tested without a phone. It is operator configuration, never taken from a request.
+    const base = (process.env["WORLD_VERIFY_BASE_URL"] ?? "https://developer.world.org").replace(/\/$/, "");
+    const res = await doFetch(`${base}/api/v4/verify/${rpId}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(proof),

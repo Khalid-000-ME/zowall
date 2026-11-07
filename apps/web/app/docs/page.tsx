@@ -184,8 +184,8 @@ export default function Docs() {
 
       <Step id="keys" eyebrow="Start" title="API keys">
         <P>
-          Create an account as a vendor or a buyer, and you get a key straight away. It is shown once, and only a hash
-          of it is kept. Create more, or revoke one, under <Link href="/app/keys">API keys</Link>. Send it as{" "}
+          Sign up as a vendor or a buyer with World ID. One person gets one account and there is no password, and you
+          get a key straight away. It is shown once, and only a hash of it is kept. Create more, or revoke one, under <Link href="/app/keys">API keys</Link>. Send it as{" "}
           <code>Authorization: Bearer &lt;key&gt;</code>, or pass it to the SDK.
         </P>
         <CodeBlock code={KEY} />

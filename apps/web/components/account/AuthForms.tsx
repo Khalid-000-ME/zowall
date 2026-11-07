@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useState } from "react";
 
-import { loginAction, signUpAction, type LoginState, type SignUpState } from "@/app/(auth)/actions";
+import { loginAction, type LoginState } from "@/app/(auth)/actions";
+import { WorldAuthButton, type SignedIn } from "@/components/account/WorldAuthButton";
 
 const input: React.CSSProperties = {
   padding: "11px 13px",
@@ -17,11 +18,18 @@ const input: React.CSSProperties = {
   width: "100%",
 };
 
-function Field({ label, name, type = "text", autoComplete, hint }: { label: string; name: string; type?: string; autoComplete?: string; hint?: string }) {
+function Field({ label, name, type = "text", autoComplete, hint, value, onChange }: { label: string; name: string; type?: string; autoComplete?: string; hint?: string; value?: string; onChange?: (v: string) => void }) {
   return (
     <label style={{ display: "grid", gap: 6, fontSize: 13.5 }}>
       <span className="ui-muted">{label}</span>
-      <input name={name} type={type} autoComplete={autoComplete} required style={input} />
+      <input
+        name={name}
+        type={type}
+        autoComplete={autoComplete}
+        required
+        style={input}
+        {...(onChange ? { value: value ?? "", onChange: (e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value) } : {})}
+      />
       {hint ? <span className="ui-faint" style={{ fontSize: 12.5 }}>{hint}</span> : null}
     </label>
   );
@@ -34,11 +42,12 @@ const CHOICES = [
 
 export function SignUpForm({ initialRole }: { initialRole?: string }) {
   const router = useRouter();
-  const [state, action, pending] = useActionState<SignUpState, FormData>(signUpAction, {});
   const [role, setRole] = useState<"vendor" | "buyer">(initialRole === "buyer" ? "buyer" : "vendor");
+  const [name, setName] = useState("");
+  const [apiKey, setApiKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  if (state.apiKey) {
+  if (apiKey) {
     return (
       <div style={{ display: "grid", gap: "var(--space-4)" }}>
         <div>
@@ -48,7 +57,7 @@ export function SignUpForm({ initialRole }: { initialRole?: string }) {
           </p>
         </div>
         <code className="ui-code" style={{ wordBreak: "break-all", whiteSpace: "pre-wrap" }}>
-          {state.apiKey}
+          {apiKey}
         </code>
         <div className="ui-actions">
           <button
@@ -56,7 +65,7 @@ export function SignUpForm({ initialRole }: { initialRole?: string }) {
             className="ui-btn"
             onClick={async () => {
               try {
-                await navigator.clipboard.writeText(state.apiKey!);
+                await navigator.clipboard.writeText(apiKey);
                 setCopied(true);
               } catch {
                 // the key is on screen either way
@@ -70,22 +79,26 @@ export function SignUpForm({ initialRole }: { initialRole?: string }) {
           </button>
         </div>
         <p className="ui-faint" style={{ fontSize: 12.5, margin: 0 }}>
-          You can create more keys, and revoke any of them, under API keys.
+          You sign in with World ID, so there is no password. You can create more keys, and revoke any of them, under API keys.
         </p>
       </div>
     );
   }
 
+  const onSignedIn = (r: SignedIn) => {
+    if (r.created && r.apiKey) setApiKey(r.apiKey);
+    else router.push("/app"); // this person already had an account
+  };
+
   return (
-    <form action={action} style={{ display: "grid", gap: "var(--space-4)" }}>
+    <div style={{ display: "grid", gap: "var(--space-4)" }}>
       <div>
         <h1 className="ui-title">Create your account</h1>
         <p className="ui-tile-body" style={{ marginTop: 8 }}>
-          Already have one? <Link href="/login">Log in</Link>.
+          You verify with World ID: one person, one account, no password. Already have one? <Link href="/login">Sign in</Link>.
         </p>
       </div>
 
-      <input type="hidden" name="role" value={role} />
       <div className="ui-choices" role="radiogroup" aria-label="What brings you here">
         {CHOICES.map((c) => (
           <button
@@ -102,35 +115,48 @@ export function SignUpForm({ initialRole }: { initialRole?: string }) {
         ))}
       </div>
 
-      <Field label={role === "vendor" ? "Business name" : "Name"} name="name" autoComplete="organization" />
-      <Field label="Email" name="email" type="email" autoComplete="email" />
-      <Field label="Password" name="password" type="password" autoComplete="new-password" hint="At least 10 characters." />
+      <Field label={role === "vendor" ? "Business name" : "Name"} name="name" autoComplete="organization" value={name} onChange={setName} />
 
-      {state.error ? <div className="ui-note ui-note--warn">{state.error}</div> : null}
-
-      <button type="submit" className="ui-btn ui-btn--primary" disabled={pending}>
-        {pending ? "Creating…" : "Create account"}
-      </button>
-    </form>
+      <WorldAuthButton
+        label="Sign up with World ID"
+        details={{ role, name }}
+        disabled={name.trim().length < 2}
+        onSignedIn={onSignedIn}
+      />
+    </div>
   );
 }
 
-export function LoginForm() {
+export function LoginForm({ passwordLogin = false }: { passwordLogin?: boolean }) {
+  const router = useRouter();
   const [state, action, pending] = useActionState<LoginState, FormData>(loginAction, {});
+
   return (
-    <form action={action} style={{ display: "grid", gap: "var(--space-4)" }}>
+    <div style={{ display: "grid", gap: "var(--space-4)" }}>
       <div>
-        <h1 className="ui-title">Log in</h1>
+        <h1 className="ui-title">Sign in</h1>
         <p className="ui-tile-body" style={{ marginTop: 8 }}>
-          New here? <Link href="/signup">Create an account</Link>.
+          Sign in with World ID. New here? <Link href="/signup">Create an account</Link>.
         </p>
       </div>
-      <Field label="Email" name="email" type="email" autoComplete="email" />
-      <Field label="Password" name="password" type="password" autoComplete="current-password" />
-      {state.error ? <div className="ui-note ui-note--warn">{state.error}</div> : null}
-      <button type="submit" className="ui-btn ui-btn--primary" disabled={pending}>
-        {pending ? "Logging in…" : "Log in"}
-      </button>
-    </form>
+
+      <WorldAuthButton label="Sign in with World ID" onSignedIn={() => router.push("/app")} />
+
+      {passwordLogin ? (
+        <details>
+          <summary className="ui-faint" style={{ cursor: "pointer", fontSize: 13 }}>
+            Older account with an email and password
+          </summary>
+          <form action={action} style={{ display: "grid", gap: "var(--space-3)", marginTop: "var(--space-3)" }}>
+            <Field label="Email" name="email" type="email" autoComplete="email" />
+            <Field label="Password" name="password" type="password" autoComplete="current-password" />
+            {state.error ? <div className="ui-note ui-note--warn">{state.error}</div> : null}
+            <button type="submit" className="ui-btn" disabled={pending}>
+              {pending ? "Signing in…" : "Sign in with password"}
+            </button>
+          </form>
+        </details>
+      ) : null}
+    </div>
   );
 }

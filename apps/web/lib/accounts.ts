@@ -6,9 +6,13 @@
  *   a vendor sells: it registers x402 endpoints and may create checkout sessions;
  *   a buyer spends: its agents discover endpoints and pay for them.
  *
- * Both sign up with an email and a password, and both get API keys for the SDK.
- * A key is shown once, when it is created, and only its hash is kept, so a leaked
- * data file leaks no working key. Passwords are salted scrypt hashes.
+ * Both sign up and sign in with World ID, and both get API keys for the SDK. The
+ * account is bound to the person's World ID for this app, so one human is one account
+ * and there is no password to leak, reuse or phish. A key is shown once, when it is
+ * created, and only its hash is kept, so a leaked data file leaks no working key.
+ *
+ * Accounts made before World sign-in carry an email and a salted scrypt password
+ * hash. They can still sign in that way only when ALLOW_PASSWORD_LOGIN=true.
  *
  * This is deliberately small: it is the identity a platform like this needs to put
  * a name against an endpoint and a key against a caller, not a user-management
@@ -25,9 +29,15 @@ export type Account = {
   id: string;
   role: Role;
   name: string;
-  email: string;
-  /** scrypt$<salt hex>$<hash hex> */
-  passwordHash: string;
+  /**
+   * The person's World ID for this app: a stable pseudonym from a World ID proof,
+   * the same every time the same human signs in. Unique across accounts.
+   */
+  worldId?: string;
+  /** legacy accounts only */
+  email?: string;
+  /** legacy accounts only. scrypt$<salt hex>$<hash hex> */
+  passwordHash?: string;
   createdAt: number;
 };
 
@@ -83,11 +93,7 @@ const rid = (prefix: string) => `${prefix}_${randomBytes(10).toString("hex")}`;
 
 /* ---------------------------------------------------------------- passwords -- */
 
-function hashPassword(password: string): string {
-  const salt = randomBytes(16);
-  const hash = scryptSync(password, salt, 64);
-  return `scrypt$${salt.toString("hex")}$${hash.toString("hex")}`;
-}
+// Only for accounts made before World sign-in. New accounts have no password.
 
 function checkPassword(password: string, stored: string): boolean {
   const [scheme, saltHex, hashHex] = stored.split("$");
@@ -99,36 +105,43 @@ function checkPassword(password: string, stored: string): boolean {
 
 /* ------------------------------------------------------------------- sign up -- */
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export type NewAccount = { role: Role; name: string };
 
-export type SignUp = { role: Role; name: string; email: string; password: string };
-
-export function validateSignUp(i: Partial<SignUp>): SignUp {
+export function validateNewAccount(i: Partial<NewAccount>): NewAccount {
   const role = i.role === "buyer" ? "buyer" : i.role === "vendor" ? "vendor" : null;
   if (!role) throw new AccountError("Choose whether you are selling or buying.");
   const name = (i.name ?? "").trim().slice(0, 60);
   if (name.length < 2) throw new AccountError("Enter a name.");
-  const email = (i.email ?? "").trim().toLowerCase();
-  if (!EMAIL.test(email) || email.length > 120) throw new AccountError("Enter a valid email address.");
-  const password = i.password ?? "";
-  if (password.length < 10) throw new AccountError("Use a password of at least 10 characters.");
-  if (password.length > 200) throw new AccountError("That password is too long.");
-  return { role, name, email, password };
+  return { role, name };
 }
 
-/** Create an account with its first API key. The key is returned once and never again. */
-export function createAccount(input: SignUp): { account: Account; apiKey: string; token: string } {
+const normWorldId = (id: string) => id.trim().toLowerCase();
+
+export function accountByWorldId(worldId: string): Account | null {
+  const id = normWorldId(worldId);
+  return Object.values(load().accounts).find((a) => a.worldId === id) ?? null;
+}
+
+/**
+ * Create an account for a verified human, with its first API key. The key is returned
+ * once and never again. A person who already has an account cannot make a second one.
+ */
+export function createWorldAccount(
+  input: NewAccount & { worldId: string },
+): { account: Account; apiKey: string; token: string } {
+  const worldId = normWorldId(input.worldId);
+  if (!worldId) throw new AccountError("No World ID to create an account for.");
+
   const db = load();
-  if (Object.values(db.accounts).some((a) => a.email === input.email)) {
-    throw new AccountError("An account with that email already exists.", 409);
+  if (Object.values(db.accounts).some((a) => a.worldId === worldId)) {
+    throw new AccountError("This person already has an account. Sign in instead.", 409);
   }
 
   const account: Account = {
     id: rid("acc"),
     role: input.role,
     name: input.name,
-    email: input.email,
-    passwordHash: hashPassword(input.password),
+    worldId,
     createdAt: Date.now(),
   };
   db.accounts[account.id] = account;
@@ -139,11 +152,16 @@ export function createAccount(input: SignUp): { account: Account; apiKey: string
   return { account, apiKey, token };
 }
 
+/** Legacy accounts only, and only when the operator has allowed it. */
 export function verifyLogin(email: string, password: string): Account {
-  const account = Object.values(load().accounts).find((a) => a.email === email.trim().toLowerCase());
+  const account = Object.values(load().accounts).find(
+    (a) => a.email && a.passwordHash && a.email === email.trim().toLowerCase(),
+  );
   // The same message for an unknown email and a wrong password, and the hash is
   // computed either way, so neither the text nor the timing says which it was.
-  const ok = account ? checkPassword(password, account.passwordHash) : (checkPassword(password, "scrypt$00$00"), false);
+  const ok = account?.passwordHash
+    ? checkPassword(password, account.passwordHash)
+    : (checkPassword(password, "scrypt$00$00"), false);
   if (!account || !ok) throw new AccountError("That email and password do not match.", 401);
   return account;
 }
