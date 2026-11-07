@@ -6,7 +6,8 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "start": "node --env-file=../../.env.local server.ts"
+    "start": "node --env-file=../../.env.local server.ts",
+    "tour": "node --env-file=../../.env.local sdk-tour.ts"
   },
   "dependencies": {
     "@zowall/sdk": "workspace:*",

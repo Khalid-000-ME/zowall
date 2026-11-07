@@ -44,10 +44,15 @@ const chainClient = createPublicClient({ chain, transport: http(undefined, { ret
 
 type Order = { poId: bigint; payee: Address; unitPrice: bigint; billable: bigint };
 
-/** The newest order of ours that has been delivered and not yet billed. */
+/**
+ * The newest order of ours that has been delivered and not yet billed. Set PO_ID to
+ * bill one specific order instead.
+ */
 async function nextBillable(): Promise<Order | null> {
+  const pinned = process.env["PO_ID"] ? BigInt(process.env["PO_ID"]) : null;
   const next = (await chainClient.readContract({ address: gateAddress, abi: GATE_ABI, functionName: "nextPoId" })) as bigint;
-  for (let id = next - 1n; id >= 1n && id > next - 25n; id--) {
+  for (let id = pinned ?? next - 1n; id >= 1n && id > (pinned ?? next) - 25n; id--) {
+    if (pinned !== null && id !== pinned) break;
     const po = (await chainClient.readContract({
       address: gateAddress,
       abi: GATE_ABI,
